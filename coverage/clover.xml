@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1791669793822" clover="3.2.0">
+  <project timestamp="1791669793822" name="All files">
+    <metrics statements="148" coveredstatements="147" conditionals="98" coveredconditionals="96" methods="24" coveredmethods="23" elements="270" coveredelements="266" complexity="0" loc="148" ncloc="148" packages="2" files="4" classes="4"/>
+    <package name="game">
+      <metrics statements="46" coveredstatements="46" conditionals="52" coveredconditionals="51" methods="10" coveredmethods="10"/>
+      <file name="machine.ts" path="/Users/arthur/Desktop/Product - Dev/staring-game/src/game/machine.ts">
+        <metrics statements="19" coveredstatements="19" conditionals="6" coveredconditionals="5" methods="3" coveredmethods="3"/>
+        <line num="26" count="1" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="34" count="2" type="stmt"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="36" count="2" type="stmt"/>
+        <line num="40" count="626" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="625" type="stmt"/>
+        <line num="42" count="625" type="stmt"/>
+        <line num="43" count="625" type="stmt"/>
+        <line num="44" count="1" type="stmt"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="46" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="49" count="625" type="stmt"/>
+        <line num="50" count="625" type="stmt"/>
+        <line num="51" count="625" type="stmt"/>
+        <line num="52" count="625" type="stmt"/>
+        <line num="53" count="625" type="stmt"/>
+        <line num="58" count="627" type="stmt"/>
+        <line num="59" count="627" type="stmt"/>
+      </file>
+      <file name="scoring.ts" path="/Users/arthur/Desktop/Product - Dev/staring-game/src/game/scoring.ts">
+        <metrics statements="27" coveredstatements="27" conditionals="46" coveredconditionals="46" methods="7" coveredmethods="7"/>
+        <line num="19" count="1257" type="stmt"/>
+        <line num="20" count="1257" type="cond" truecount="2" falsecount="0"/>
+        <line num="21" count="1209" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="1167" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="27" count="17" type="stmt"/>
+        <line num="31" count="591" type="stmt"/>
+        <line num="32" count="591" type="cond" truecount="4" falsecount="0"/>
+        <line num="42" count="9" type="cond" truecount="4" falsecount="0"/>
+        <line num="43" count="6" type="stmt"/>
+        <line num="44" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="46" count="1" type="stmt"/>
+        <line num="49" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="51" count="2" type="stmt"/>
+        <line num="53" count="1" type="stmt"/>
+        <line num="58" count="4" type="stmt"/>
+        <line num="69" count="633" type="cond" truecount="2" falsecount="0"/>
+        <line num="70" count="631" type="cond" truecount="2" falsecount="0"/>
+        <line num="71" count="629" type="cond" truecount="2" falsecount="0"/>
+        <line num="72" count="586" type="stmt"/>
+        <line num="73" count="586" type="stmt"/>
+        <line num="74" count="586" type="cond" truecount="2" falsecount="0"/>
+        <line num="75" count="584" type="cond" truecount="2" falsecount="0"/>
+        <line num="76" count="586" type="cond" truecount="5" falsecount="0"/>
+        <line num="77" count="586" type="cond" truecount="2" falsecount="0"/>
+        <line num="84" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="85" count="3" type="cond" truecount="2" falsecount="0"/>
+      </file>
+    </package>
+    <package name="vision">
+      <metrics statements="102" coveredstatements="101" conditionals="46" coveredconditionals="45" methods="14" coveredmethods="13"/>
+      <file name="calibration.ts" path="/Users/arthur/Desktop/Product - Dev/staring-game/src/vision/calibration.ts">
+        <metrics statements="15" coveredstatements="15" conditionals="7" coveredconditionals="7" methods="3" coveredmethods="3"/>
+        <line num="6" count="3" type="stmt"/>
+        <line num="7" count="3" type="stmt"/>
+        <line num="8" count="3" type="stmt"/>
+        <line num="11" count="55" type="stmt"/>
+        <line num="12" count="55" type="cond" truecount="2" falsecount="0"/>
+        <line num="13" count="52" type="stmt"/>
+        <line num="14" count="52" type="stmt"/>
+        <line num="15" count="52" type="stmt"/>
+        <line num="16" count="52" type="stmt"/>
+        <line num="17" count="52" type="stmt"/>
+        <line num="18" count="52" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="26" count="3" type="cond" truecount="4" falsecount="0"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="28" count="1" type="stmt"/>
+      </file>
+      <file name="detector.ts" path="/Users/arthur/Desktop/Product - Dev/staring-game/src/vision/detector.ts">
+        <metrics statements="87" coveredstatements="86" conditionals="39" coveredconditionals="38" methods="11" coveredmethods="10"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="14" count="1" type="stmt"/>
+        <line num="22" count="2" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="25" count="2" type="stmt"/>
+        <line num="26" count="2" type="cond" truecount="6" falsecount="0"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="29" count="1" type="stmt"/>
+        <line num="30" count="6" type="cond" truecount="1" falsecount="1"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="45" count="56" type="stmt"/>
+        <line num="46" count="56" type="stmt"/>
+        <line num="50" count="6016" type="cond" truecount="2" falsecount="0"/>
+        <line num="51" count="266" type="cond" truecount="2" falsecount="0"/>
+        <line num="52" count="266" type="stmt"/>
+        <line num="54" count="5750" type="cond" truecount="2" falsecount="0"/>
+        <line num="55" count="5685" type="stmt"/>
+        <line num="56" count="5685" type="stmt"/>
+        <line num="58" count="65" type="stmt"/>
+        <line num="59" count="65" type="cond" truecount="2" falsecount="0"/>
+        <line num="60" count="10" type="stmt"/>
+        <line num="61" count="10" type="stmt"/>
+        <line num="63" count="55" type="stmt"/>
+        <line num="67" count="359" type="stmt"/>
+        <line num="68" count="359" type="stmt"/>
+        <line num="80" count="14" type="stmt"/>
+        <line num="81" count="14" type="stmt"/>
+        <line num="82" count="14" type="stmt"/>
+        <line num="83" count="14" type="stmt"/>
+        <line num="84" count="14" type="stmt"/>
+        <line num="85" count="14" type="stmt"/>
+        <line num="86" count="14" type="stmt"/>
+        <line num="87" count="14" type="stmt"/>
+        <line num="88" count="14" type="stmt"/>
+        <line num="89" count="14" type="stmt"/>
+        <line num="90" count="14" type="stmt"/>
+        <line num="94" count="14" type="stmt"/>
+        <line num="95" count="14" type="cond" truecount="1" falsecount="0"/>
+        <line num="97" count="14" type="stmt"/>
+        <line num="98" count="56" type="stmt"/>
+        <line num="99" count="14" type="stmt"/>
+        <line num="100" count="14" type="stmt"/>
+        <line num="109" count="0" type="stmt"/>
+        <line num="118" count="1593" type="stmt"/>
+        <line num="119" count="1593" type="stmt"/>
+        <line num="120" count="1593" type="stmt"/>
+        <line num="121" count="1593" type="stmt"/>
+        <line num="123" count="1593" type="cond" truecount="2" falsecount="0"/>
+        <line num="124" count="89" type="stmt"/>
+        <line num="125" count="89" type="stmt"/>
+        <line num="126" count="89" type="stmt"/>
+        <line num="127" count="89" type="stmt"/>
+        <line num="128" count="89" type="stmt"/>
+        <line num="129" count="89" type="stmt"/>
+        <line num="130" count="89" type="cond" truecount="4" falsecount="0"/>
+        <line num="131" count="2" type="stmt"/>
+        <line num="132" count="2" type="stmt"/>
+        <line num="134" count="89" type="stmt"/>
+        <line num="136" count="1504" type="stmt"/>
+        <line num="137" count="1504" type="stmt"/>
+        <line num="139" count="1504" type="stmt"/>
+        <line num="141" count="1504" type="stmt"/>
+        <line num="143" count="1504" type="cond" truecount="2" falsecount="0"/>
+        <line num="144" count="1491" type="stmt"/>
+        <line num="145" count="1491" type="stmt"/>
+        <line num="146" count="1491" type="stmt"/>
+        <line num="148" count="13" type="stmt"/>
+        <line num="149" count="13" type="stmt"/>
+        <line num="152" count="1504" type="stmt"/>
+        <line num="153" count="1504" type="stmt"/>
+        <line num="154" count="8" type="stmt"/>
+        <line num="155" count="8" type="cond" truecount="4" falsecount="0"/>
+        <line num="156" count="7" type="stmt"/>
+        <line num="157" count="7" type="stmt"/>
+        <line num="160" count="1504" type="cond" truecount="2" falsecount="0"/>
+        <line num="161" count="6" type="stmt"/>
+        <line num="163" count="1504" type="cond" truecount="2" falsecount="0"/>
+        <line num="164" count="2" type="stmt"/>
+        <line num="166" count="1504" type="cond" truecount="2" falsecount="0"/>
+        <line num="167" count="1593" type="cond" truecount="2" falsecount="0"/>
+        <line num="168" count="1593" type="cond" truecount="2" falsecount="0"/>
+        <line num="169" count="1" type="stmt"/>
+        <line num="171" count="1504" type="stmt"/>
+        <line num="173" count="1504" type="stmt"/>
+        <line num="177" count="1593" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

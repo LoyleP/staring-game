@@ -1,0 +1,5 @@
+.gauge { width: 100%; }
+.row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; }
+.row strong { font-family: var(--font-display); font-size: 22px; }
+.track { height: 8px; border-radius: 4px; background: rgb(255 255 255 / 0.15); overflow: hidden; }
+.fill { height: 100%; background: var(--aura-me); transform-origin: left; transition: transform 0.2s linear; }

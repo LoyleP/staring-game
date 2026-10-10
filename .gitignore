@@ -5,3 +5,4 @@ dist
 playwright-report
 test-results
 .DS_Store
+public/mediapipe/wasm
