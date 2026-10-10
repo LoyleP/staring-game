@@ -14,7 +14,7 @@ export function DebugOverlay() {
       {`${d.mode}/${d.delegate} ${d.fps} fps
 smile ${f(d.smile)}  >${f(d.thresholds.smileLight)} / ${f(d.thresholds.smileFull)}
 jaw   ${f(d.jawOpen)}  laugh >${f(d.thresholds.laughSmile)}+${f(d.thresholds.laughJaw)}
-head  ${f(d.headOffset)}  >0.08
+head  ${f(d.headOffset)}  >0.12
 ${d.recent.join('\n')}`}
     </pre>
   );

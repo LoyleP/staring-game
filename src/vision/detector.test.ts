@@ -50,7 +50,7 @@ describe('FaceEventDetector', () => {
   it('ignore un sourire plus bref que la durée minimale', () => {
     const det = new FaceEventDetector(BASE);
     const a = run(det, 0, 1000);
-    const b = run(det, a.end, 130, { smile: 0.7 });
+    const b = run(det, a.end, 130, { smile: 0.9 });
     const c = run(det, b.end, 2000);
     expect([...a.events, ...b.events, ...c.events]).toEqual([]);
   });
@@ -58,7 +58,7 @@ describe('FaceEventDetector', () => {
   it('pénalise un sourire léger tenu une seule fois', () => {
     const det = new FaceEventDetector(BASE);
     const a = run(det, 0, 1000);
-    const b = run(det, a.end, 4000, { smile: 0.45 });
+    const b = run(det, a.end, 4000, { smile: 0.6 });
     expect(b.events.map((e) => e.type)).toEqual(['smileLight']);
     expect(b.last.flags.smiling).toBe(true);
   });
@@ -66,7 +66,7 @@ describe('FaceEventDetector', () => {
   it('un sourire franc tenu déclenche léger puis franc (upgrade)', () => {
     const det = new FaceEventDetector(BASE);
     const a = run(det, 0, 1000);
-    const b = run(det, a.end, 3000, { smile: 0.75 });
+    const b = run(det, a.end, 3000, { smile: 0.9 });
     expect(b.events.map((e) => [e.type, e.upgrade ?? false])).toEqual([
       ['smileLight', false],
       ['smileFull', true],
@@ -78,7 +78,7 @@ describe('FaceEventDetector', () => {
     let t = 0;
     const all: FaceEvent[] = [];
     for (let i = 0; i < 2; i++) {
-      const smile = run(det, t, 600, { smile: 0.5 });
+      const smile = run(det, t, 600, { smile: 0.65 });
       const rest = run(det, smile.end, 300);
       all.push(...smile.events, ...rest.events);
       t = rest.end;
@@ -117,7 +117,7 @@ describe('FaceEventDetector', () => {
     expect(r.events).toEqual([]);
   });
 
-  it('active headMoving quand le nez dévie de plus de 8 % de la largeur du visage', () => {
+  it('active headMoving quand le nez dévie de plus de 12 % de la largeur du visage', () => {
     const det = new FaceEventDetector(BASE);
     const a = run(det, 0, 1000);
     const b = run(det, a.end, 1500, { noseX: BASE.noseX + 0.2 * BASE.faceWidth });
@@ -129,10 +129,10 @@ describe('FaceEventDetector', () => {
   it('neutralise un sourire au repos grâce à la calibration', () => {
     const restingSmile: Baseline = { ...BASE, smile: 0.3 };
     const det = new FaceEventDetector(restingSmile);
-    expect(det.thresholds.smileLight).toBeCloseTo(0.65);
-    expect(run(det, 0, 5000, { smile: 0.4 }).events).toEqual([]);
+    expect(det.thresholds.smileLight).toBeCloseTo(0.8);
+    expect(run(det, 0, 5000, { smile: 0.6 }).events).toEqual([]);
     const plain = new FaceEventDetector(BASE);
-    expect(run(plain, 0, 5000, { smile: 0.4 }).events.map((e) => e.type)).toEqual(['smileLight']);
+    expect(run(plain, 0, 5000, { smile: 0.6 }).events.map((e) => e.type)).toEqual(['smileLight']);
   });
 
   it('plafonne le seuil effectif à 0,9', () => {
