@@ -57,7 +57,14 @@ async function onConnection(ws: WebSocket, req: IncomingMessage) {
   };
 
   try {
-    unsubscribe = store.subscribeInbox(code, role, flush);
+    const unsub = store.subscribeInbox(code, role, flush);
+    // Filet de sécurité : l'abonnement Redis met un instant à s'établir (et peut manquer un réveil) ;
+    // un message déposé entre-temps attendrait le réveil suivant. On relève donc aussi la boîte chaque seconde.
+    const safety = setInterval(flush, 1000);
+    unsubscribe = () => {
+      clearInterval(safety);
+      unsub();
+    };
   } catch {
     return ws.close(1011, 'server');
   }

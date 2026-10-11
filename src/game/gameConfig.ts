@@ -46,5 +46,6 @@ export const gameConfig = {
     callAudio: false,
   },
   media: { width: 480, height: 640, fps: 24, maxBitrateKbps: 600 },
-  room: { codeLength: 6, ttlSeconds: 7_200, createLimitPerHour: 10 },
+  /** 60 créations/heure par IP : un campus ou un lycée partage souvent une seule adresse IP. */
+  room: { codeLength: 6, ttlSeconds: 7_200, createLimitPerHour: 60 },
 };
