@@ -122,6 +122,16 @@ export class SoloSession {
   }
 
   private calibrate(frame: FaceFrame): void {
+    const store0 = useSoloStore.getState();
+    const ratio = frame.imageWidth ? frame.faceWidth / frame.imageWidth : 1;
+    if (frame.face && ratio < gameConfig.detection.minFaceWidthRatio) {
+      // Trop loin : on ne compte pas la calibration tant que le visage ne remplit pas l'ovale.
+      this.calibrator = new Calibrator();
+      this.calibStart = null;
+      store0.set({ calibProgress: 0, message: 'Rapproche-toi de la caméra' });
+      return;
+    }
+    if (store0.message === 'Rapproche-toi de la caméra') store0.set({ message: null });
     this.calibStart ??= frame.t;
     this.calibrator?.add(frame);
     const progress = Math.min(1, (frame.t - this.calibStart) / gameConfig.detection.calibrationMs);

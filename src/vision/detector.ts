@@ -37,6 +37,7 @@ export function frameFromResult(
     noseX: nose.x * width,
     noseY: nose.y * height,
     faceWidth: Math.max(1, Math.hypot((right.x - left.x) * width, (right.y - left.y) * height)),
+    imageWidth: width,
   };
 }
 

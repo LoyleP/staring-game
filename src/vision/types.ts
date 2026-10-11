@@ -10,6 +10,8 @@ export interface FaceFrame {
   noseY: number;
   /** Largeur du visage en pixels (distance entre les points 234 et 454). */
   faceWidth: number;
+  /** Largeur de l'image analysée en pixels (pour mesurer la taille relative du visage). */
+  imageWidth?: number;
 }
 
 /** Référence neutre mesurée pendant la calibration. */

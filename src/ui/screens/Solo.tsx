@@ -83,8 +83,8 @@ export function Solo() {
         <>
           <div className={styles.oval} />
           <section className={styles.bottom}>
-            <p>Visage neutre, ne bouge pas</p>
-            {message && <p className={styles.small}>{message}</p>}
+            <p>Remplis l’ovale, visage neutre, ne bouge pas</p>
+            {message && <p className={styles.warn}>{message}</p>}
             <progress value={calibProgress} max={1} />
           </section>
         </>

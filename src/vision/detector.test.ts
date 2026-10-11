@@ -223,3 +223,14 @@ describe('head movement reference', () => {
     expect(moving).toBeGreaterThan(0);
   });
 });
+
+describe('imageWidth', () => {
+  it('expose la largeur de l’image pour mesurer la taille relative du visage', () => {
+    const lm = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+    lm[234] = { x: 0.2, y: 0.5 };
+    lm[454] = { x: 0.8, y: 0.5 };
+    const f = frameFromResult({ faceLandmarks: [lm] }, 480, 640, 0);
+    expect(f.imageWidth).toBe(480);
+    expect(f.faceWidth / (f.imageWidth ?? 1)).toBeCloseTo(0.6);
+  });
+});
