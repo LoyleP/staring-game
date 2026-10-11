@@ -1,0 +1,10 @@
+.view { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #3a2a5c, #14101f 70%); overflow: hidden; }
+.face { width: 62%; max-width: 320px; }
+.view[data-expression='moving'] .face { animation: sway 0.5s ease-in-out infinite alternate; }
+.view[data-expression='laugh'] .face { animation: shake 0.12s linear infinite; }
+.eyes { transform-origin: 100px 95px; animation: blink 4s infinite; }
+.name { position: absolute; bottom: 30%; opacity: 0; }
+@keyframes sway { from { transform: translateX(-14px) rotate(-3deg); } to { transform: translateX(14px) rotate(3deg); } }
+@keyframes shake { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+@keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+@media (prefers-reduced-motion: reduce) { .view .face, .eyes { animation: none !important; } }

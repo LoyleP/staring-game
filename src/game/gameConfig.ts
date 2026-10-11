@@ -6,7 +6,8 @@ export const gameConfig = {
     countdownMs: 3_000,
     graceMs: 2_000,
     startAura: 1000,
-    farmingPerSecond: 10,
+    /** Gain passif par seconde en restant neutre. 0 = la jauge ne bouge que sur un événement. */
+    farmingPerSecond: 0,
     tieMargin: 50,
     suddenDeathMs: 15_000,
   },
@@ -21,6 +22,8 @@ export const gameConfig = {
     smoothing: 0.4,
     hysteresis: 0.8,
     maxEffectiveThreshold: 0.9,
+    /** Constante de temps de la référence du nez : une position tenue est absorbée, seul un mouvement compte. */
+    headReferenceTauMs: 4_000,
     calibrationMs: 3_000,
     calibrationMinDetected: 0.8,
     inferenceFps: 15,
@@ -38,4 +41,4 @@ export const gameConfig = {
   },
   media: { width: 480, height: 640, fps: 24, maxBitrateKbps: 600 },
   room: { codeLength: 6, ttlSeconds: 7_200, createLimitPerHour: 10 },
-} as const;
+};

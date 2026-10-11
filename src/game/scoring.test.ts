@@ -3,6 +3,7 @@ import { SoloRound } from './machine';
 import { gameConfig } from './gameConfig';
 import { applyEvent, createRoundState, decideByTime, roundPhase, tick } from './scoring';
 
+const farming = { ...gameConfig, round: { ...gameConfig.round, farmingPerSecond: 10 } };
 const calm = { smiling: false, headMoving: false, faceLost: false };
 
 describe('roundPhase', () => {
@@ -52,16 +53,20 @@ describe('applyEvent', () => {
 });
 
 describe('tick', () => {
-  it('farme +10/s quand neutre et immobile', () => {
-    expect(tick(createRoundState(), 1000, 'play', calm).aura).toBeCloseTo(1010);
+  it('ne bouge pas quand il ne se passe rien (farming à 0 par défaut)', () => {
+    expect(tick(createRoundState(), 1000, 'play', calm).aura).toBe(1000);
+  });
+
+  it('farme +10/s quand neutre et immobile si le farming est activé', () => {
+    expect(tick(createRoundState(), 1000, 'play', calm, farming).aura).toBeCloseTo(1010);
   });
 
   it('ne farme pas hors phase de jeu', () => {
-    expect(tick(createRoundState(), 1000, 'grace', calm).aura).toBe(1000);
+    expect(tick(createRoundState(), 1000, 'grace', calm, farming).aura).toBe(1000);
   });
 
   it('ne farme pas en souriant et pénalise le mouvement de tête', () => {
-    expect(tick(createRoundState(), 1000, 'play', { ...calm, smiling: true }).aura).toBe(1000);
+    expect(tick(createRoundState(), 1000, 'play', { ...calm, smiling: true }, farming).aura).toBe(1000);
     expect(tick(createRoundState(), 1000, 'play', { ...calm, headMoving: true }).aura).toBeCloseTo(950);
   });
 
@@ -99,12 +104,11 @@ describe('SoloRound', () => {
   const out = (events: { type: 'smileLight' | 'laugh'; t: number }[] = [], flags = calm) => ({ events, flags });
 
   it('déroule une manche complète et farme pendant le jeu', () => {
-    const round = new SoloRound(0);
+    const round = new SoloRound(0, false, farming);
     expect(round.step(1000, out()).countdown).toBe(2);
     let snap = round.step(1000, out());
     for (let t = 1000; t <= 63_000; t += 100) snap = round.step(t, out());
     expect(snap.ended).toBe('time');
-    // 58 s de jeu après la grâce (60 s - 2 s)... farming de 5 s à 63 s
     expect(snap.aura).toBeGreaterThan(1500);
   });
 
@@ -115,5 +119,34 @@ describe('SoloRound', () => {
     expect(snap.ended).toBe('crack');
     expect(snap.deltas).toEqual([gameConfig.penalties.laugh.aura]);
     expect(round.step(7000, out())).toBe(snap);
+  });
+});
+
+describe('SoloRound avec adversaire', () => {
+  const quiet = { events: [], flags: calm };
+
+  it('l’adversaire qui craque perd, et on gagne', () => {
+    const round = new SoloRound(0, true);
+    round.step(6000, quiet, quiet);
+    const snap = round.step(6100, quiet, { events: [{ type: 'laugh', t: 6100 }], flags: calm });
+    expect(snap.winner).toBe('me');
+    expect(snap.oppDeltas).toEqual([gameConfig.penalties.laugh.aura]);
+    expect(snap.ended).toBe('crack');
+  });
+
+  it('au temps, le plus d’aura gagne ; égalité à moins de 50 : nul', () => {
+    const hit = { events: [{ type: 'smileLight' as const, t: 0 }], flags: calm };
+    const a = new SoloRound(0, true);
+    a.step(6000, quiet, hit);
+    expect(a.step(63_000, quiet, quiet).winner).toBe('me');
+    const b = new SoloRound(0, true);
+    b.step(6000, quiet, quiet);
+    expect(b.step(63_000, quiet, quiet).winner).toBe('draw');
+  });
+
+  it('les deux craquent sur la même image : nul', () => {
+    const laugh = { events: [{ type: 'laugh' as const, t: 6000 }], flags: calm };
+    const r = new SoloRound(0, true);
+    expect(r.step(6000, laugh, laugh).winner).toBe('draw');
   });
 });

@@ -81,6 +81,8 @@ export class FaceEventDetector {
   private jaw = 0;
   private offset = 0;
   private hasSmoothed = false;
+  private ref: { x: number; y: number };
+  private lastT: number | null = null;
   private light = new Hold();
   private full = new Hold();
   private laugh = new Hold();
@@ -94,6 +96,7 @@ export class FaceEventDetector {
     private readonly baseline: Baseline,
     private readonly cfg: Config = gameConfig,
   ) {
+    this.ref = { x: baseline.noseX, y: baseline.noseY };
     const cap = cfg.detection.maxEffectiveThreshold;
     const eff = (th: number, base: number) => Math.min(base + th, cap);
     const p = cfg.penalties;
@@ -126,6 +129,7 @@ export class FaceEventDetector {
       this.laugh.reset();
       this.head.reset();
       this.hasSmoothed = false;
+      this.lastT = null;
       this.lostSince ??= t;
       if (!this.lost && t - this.lostSince >= p.faceLost.minMs) {
         this.lost = true;
@@ -137,9 +141,14 @@ export class FaceEventDetector {
     this.lost = false;
 
     const smile = (frame.smileL + frame.smileR) / 2;
+    // Référence du nez qui suit lentement la position réelle : on pénalise le mouvement, pas la pose.
+    const dt = this.lastT === null ? 0 : t - this.lastT;
+    this.lastT = t;
     const offset =
-      Math.hypot(frame.noseX - this.baseline.noseX, frame.noseY - this.baseline.noseY) /
-      this.baseline.faceWidth;
+      Math.hypot(frame.noseX - this.ref.x, frame.noseY - this.ref.y) / this.baseline.faceWidth;
+    const k = 1 - Math.exp(-dt / this.cfg.detection.headReferenceTauMs);
+    this.ref.x += k * (frame.noseX - this.ref.x);
+    this.ref.y += k * (frame.noseY - this.ref.y);
     if (this.hasSmoothed) {
       this.smile += a * (smile - this.smile);
       this.jaw += a * (frame.jawOpen - this.jaw);

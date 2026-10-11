@@ -1,19 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { gameConfig } from '../../game/gameConfig';
 import { SoloSession } from '../../game/solo';
 import { useSoloStore } from '../../game/store';
 import { permissionHelp } from '../../vision/camera';
 import { AuraGauge } from '../components/AuraGauge';
 import { DebugOverlay } from '../components/DebugOverlay';
+import { OpponentView } from '../components/OpponentView';
 import styles from './Solo.module.css';
+
+const clock = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
 
 export function Solo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [session, setSession] = useState<SoloSession | null>(null);
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const debug = params.get('debug') === '1';
-  const { screen, message, calibProgress, snap, floaters } = useSoloStore();
+  const { screen, message, calibProgress, snap, floaters, oppExpression } = useSoloStore();
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -22,17 +29,29 @@ export function Solo() {
     return () => s.dispose();
   }, [debug]);
 
-  const live = screen === 'calibrating' || screen === 'ready' || screen === 'running' || screen === 'ended';
+  const inCall = screen === 'running' || screen === 'ended';
+  const live = inCall || screen === 'calibrating' || screen === 'ready';
+  const startAura = gameConfig.round.startAura;
+  const cracked = snap?.winner === 'me' && snap.ended === 'crack';
 
   return (
     <main className={styles.root}>
-      <video ref={videoRef} className={styles.video} data-live={live} playsInline autoPlay muted />
+      {inCall && <OpponentView expression={cracked ? 'laugh' : oppExpression} />}
+      <video
+        ref={videoRef}
+        className={styles.video}
+        data-mode={inCall ? 'pip' : 'full'}
+        data-live={live}
+        playsInline
+        autoPlay
+        muted
+      />
       {screen === 'running' && <DebugOverlay />}
 
       {screen === 'prepare' && (
         <section className={styles.panel}>
           <h1>Mode solo</h1>
-          <p>Reste neutre et immobile : tu gagnes de l’aura. Sourire, rire ou bouger t’en coûte.</p>
+          <p>Affronte un adversaire simulé : reste neutre, fais-le craquer avant qu’il ne te fasse craquer.</p>
           <p className={styles.small}>
             L’analyse du visage tourne sur ton téléphone. Aucune image ni donnée faciale n’est envoyée ou conservée.
           </p>
@@ -79,28 +98,66 @@ export function Solo() {
 
       {screen === 'running' && snap && (
         <>
-          <header className={styles.hud}>
-            <AuraGauge label="Toi" aura={snap.aura} />
-            <div className={styles.timer}>{Math.ceil(snap.timeLeftMs / 1000)}</div>
+          <header className={styles.top}>
+            <span className={styles.pill}>Bot · {clock(snap.timeLeftMs)}</span>
           </header>
+
+          <div className={styles.mid}>
+            <AuraGauge side="opp" label="Bot" aura={snap.oppAura ?? 0} max={startAura} />
+            <AuraGauge side="me" label="Toi" aura={snap.aura} max={startAura} />
+            {floaters.map((f) => (
+              <div key={f.id} className={styles.floater} data-side={f.side}>
+                {f.delta}
+              </div>
+            ))}
+          </div>
+
           {snap.phase === 'countdown' && <div className={styles.big}>{snap.countdown}</div>}
-          {snap.phase === 'grace' && <div className={styles.hint}>Prêt… la pénalité commence</div>}
-          {snap.phase === 'play' && snap.flags.faceLost && <div className={styles.alert}>Visage perdu !</div>}
-          {snap.phase === 'play' && snap.flags.smiling && <div className={styles.alert}>Tu souris</div>}
-          {snap.phase === 'play' && snap.flags.headMoving && <div className={styles.alert}>Ne bouge pas</div>}
-          {floaters.map((f) => (
-            <div key={f.id} className={styles.floater}>{f.delta}</div>
-          ))}
+          {snap.phase === 'grace' && <div className={styles.hint}>Prêt…</div>}
+          <div className={styles.alerts}>
+            {snap.phase === 'play' && snap.flags.faceLost && <span className={styles.alert}>Visage perdu !</span>}
+            {snap.phase === 'play' && snap.flags.smiling && <span className={styles.alert}>Tu souris</span>}
+            {snap.phase === 'play' && snap.flags.headMoving && <span className={styles.alert}>Ne bouge pas</span>}
+          </div>
         </>
       )}
 
+      {inCall && (
+        <footer className={styles.controls}>
+          <button
+            className={styles.end}
+            aria-label="Quitter"
+            onClick={() => {
+              session?.dispose();
+              navigate('/');
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden>
+              <path d="M12 9c-3.3 0-6.4 1-8.6 2.8-.4.4-.5 1-.1 1.4l1.6 2c.3.4.9.5 1.3.2l2.4-1.5c.3-.2.5-.5.5-.9V12c1.5-.5 3.5-.5 5 0v1c0 .4.2.7.5.9l2.4 1.5c.4.3 1 .2 1.3-.2l1.6-2c.4-.4.3-1-.1-1.4C18.4 10 15.3 9 12 9z" />
+            </svg>
+          </button>
+        </footer>
+      )}
+
       {screen === 'ended' && snap && (
-        <section className={styles.panel}>
-          <h1>{snap.ended === 'time' ? 'Manche tenue !' : snap.ended === 'crack' ? 'Tu as craqué' : 'Aura épuisée'}</h1>
-          <p className={styles.score}>{Math.round(snap.aura)} aura</p>
-          <p className={styles.small}>Durée : {Math.round(Math.min(snap.elapsedMs, gameConfig.round.durationMs) / 1000)} s</p>
+        <section className={styles.result}>
+          <h1>
+            {snap.winner === 'me' ? 'Tu gagnes' : snap.winner === 'opp' ? 'Tu perds' : 'Égalité'}
+          </h1>
+          <p className={styles.small}>
+            {snap.ended === 'crack'
+              ? snap.winner === 'me'
+                ? 'Le bot a craqué'
+                : 'Tu as craqué'
+              : snap.ended === 'zero'
+                ? 'Aura épuisée'
+                : 'Au temps'}
+          </p>
+          <p className={styles.score}>
+            {Math.round(snap.aura)} <span>vs</span> {Math.round(snap.oppAura ?? 0)}
+          </p>
           <button onClick={() => session?.startRound()}>Rejouer</button>
-          <button onClick={() => session?.startCalibration()}>Recalibrer</button>
+          <button className={styles.secondary} onClick={() => session?.startCalibration()}>Recalibrer</button>
         </section>
       )}
     </main>

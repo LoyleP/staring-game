@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DetectorDebug } from '../vision/detector';
+import type { Expression } from './fakeOpponent';
 import type { RoundSnapshot } from './machine';
 
 export type SoloScreen =
@@ -14,6 +15,7 @@ export type SoloScreen =
 
 export interface Floater {
   id: number;
+  side: 'me' | 'opp';
   delta: number;
 }
 
@@ -30,6 +32,7 @@ interface SoloStore {
   calibProgress: number;
   snap: RoundSnapshot | null;
   floaters: Floater[];
+  oppExpression: Expression;
   debug: DebugInfo | null;
   set: (patch: Partial<Omit<SoloStore, 'set' | 'reset'>>) => void;
   reset: () => void;
@@ -41,6 +44,7 @@ const initial = {
   calibProgress: 0,
   snap: null,
   floaters: [] as Floater[],
+  oppExpression: 'neutral' as Expression,
   debug: null,
 };
 

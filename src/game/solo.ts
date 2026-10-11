@@ -3,8 +3,10 @@ import { CameraError, requestCamera, stopStream } from '../vision/camera';
 import { FaceEventDetector } from '../vision/detector';
 import { startFaceTracker, type FaceTracker } from '../vision/faceTracker';
 import type { Baseline, FaceFrame } from '../vision/types';
+import { FakeOpponent } from './fakeOpponent';
 import { gameConfig } from './gameConfig';
 import { SoloRound } from './machine';
+import { roundPhase } from './scoring';
 import { useSoloStore } from './store';
 
 const FLOATER_MS = 1200;
@@ -18,6 +20,8 @@ export class SoloSession {
   private calibStart: number | null = null;
   private detector: FaceEventDetector | null = null;
   private round: SoloRound | null = null;
+  private roundStart = 0;
+  private bot: FakeOpponent | null = null;
   private floaterId = 0;
   private recent: string[] = [];
   private mode: 'idle' | 'calibrating' | 'running' = 'idle';
@@ -58,6 +62,7 @@ export class SoloSession {
     if (!this.baseline) return;
     this.detector = new FaceEventDetector(this.baseline);
     this.round = null; // l'horloge démarre à la première image analysée
+    this.bot = new FakeOpponent();
     this.mode = 'running';
     useSoloStore.getState().set({ screen: 'running', snap: null, floaters: [] });
   }
@@ -102,19 +107,27 @@ export class SoloSession {
 
   private play(frame: FaceFrame): void {
     if (!this.detector) return;
-    this.round ??= new SoloRound(frame.t);
+    if (!this.round) {
+      this.roundStart = frame.t;
+      this.round = new SoloRound(frame.t, this.bot !== null);
+    }
     const out = this.detector.update(frame);
-    const snap = this.round.step(frame.t, out);
+    const bot = this.bot?.step(frame.t, roundPhase(frame.t - this.roundStart));
+    const snap = this.round.step(frame.t, out, bot?.out);
     const store = useSoloStore.getState();
 
     for (const e of out.events) this.recent = [`${(snap.elapsedMs / 1000).toFixed(1)}s ${e.type}`, ...this.recent].slice(0, 6);
     const now = performance.now();
     const floaters = store.floaters.filter((f) => now - f.id < FLOATER_MS);
-    for (const delta of snap.deltas) floaters.push({ id: now + this.floaterId++ / 1000, delta });
+    const add = (side: 'me' | 'opp', delta: number) =>
+      floaters.push({ id: now + this.floaterId++ / 1000, side, delta });
+    snap.deltas.forEach((d) => add('me', d));
+    snap.oppDeltas.forEach((d) => add('opp', d));
 
     store.set({
       snap,
       floaters,
+      oppExpression: bot?.expression ?? 'neutral',
       debug: this.debugEnabled
         ? {
             ...this.detector.debug,

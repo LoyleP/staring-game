@@ -3,12 +3,17 @@ import { gameConfig } from './gameConfig';
 import {
   applyEvent,
   createRoundState,
+  decideByTime,
   roundPhase,
   tick,
   type RoundEnd,
   type RoundPhase,
   type RoundState,
 } from './scoring';
+
+type Config = typeof gameConfig;
+
+export type Winner = 'me' | 'opp' | 'draw';
 
 export interface RoundSnapshot {
   phase: RoundPhase;
@@ -17,54 +22,98 @@ export interface RoundSnapshot {
   countdown: number;
   timeLeftMs: number;
   aura: number;
+  oppAura: number | null;
+  /** Raison de fin de la manche pour celui qui l'a causée. */
   ended: RoundEnd | null;
+  winner: Winner | null;
   flags: FaceFlags;
   /** Variations ponctuelles survenues sur cette image. */
   deltas: number[];
+  oppDeltas: number[];
 }
 
 const IDLE_FLAGS: FaceFlags = { smiling: false, headMoving: false, faceLost: false };
 
-/** Une manche en solo : compte à rebours, grâce, jeu, fin. */
+/** Une manche : contre le chronomètre, ou contre un adversaire (réel ou simulé). */
 export class SoloRound {
-  private state: RoundState = createRoundState();
+  private me: RoundState;
+  private opp: RoundState | null;
   private lastT: number;
   private last: RoundSnapshot;
+  private done = false;
 
-  constructor(private readonly startT: number) {
+  constructor(
+    private readonly startT: number,
+    withOpponent = false,
+    private readonly cfg: Config = gameConfig,
+  ) {
+    this.me = createRoundState(cfg);
+    this.opp = withOpponent ? createRoundState(cfg) : null;
     this.lastT = startT;
-    this.last = this.snapshot(startT, [], IDLE_FLAGS);
+    this.last = this.snapshot(startT, [], [], IDLE_FLAGS);
   }
 
-  step(t: number, out: DetectorOutput): RoundSnapshot {
-    if (this.state.ended) return this.last;
-    const phase = roundPhase(t - this.startT);
+  step(t: number, out: DetectorOutput, oppOut?: DetectorOutput): RoundSnapshot {
+    if (this.done) return this.last;
+    const phase = roundPhase(t - this.startT, this.cfg);
     const deltas: number[] = [];
+    const oppDeltas: number[] = [];
+
     for (const event of out.events) {
-      const r = applyEvent(this.state, event, phase);
-      this.state = r.state;
+      const r = applyEvent(this.me, event, phase, this.cfg);
+      this.me = r.state;
       if (r.delta !== 0) deltas.push(r.delta);
+    }
+    if (this.opp && oppOut) {
+      for (const event of oppOut.events) {
+        const r = applyEvent(this.opp, event, phase, this.cfg);
+        this.opp = r.state;
+        if (r.delta !== 0) oppDeltas.push(r.delta);
+      }
     }
     // Évite un saut énorme si l'onglet a gelé.
     const dt = Math.min(t - this.lastT, 500);
     this.lastT = t;
-    this.state = tick(this.state, dt, phase, out.flags);
-    this.last = this.snapshot(t, deltas, out.flags);
+    this.me = tick(this.me, dt, phase, out.flags, this.cfg);
+    if (this.opp && oppOut) this.opp = tick(this.opp, dt, phase, oppOut.flags, this.cfg);
+
+    this.last = this.snapshot(t, deltas, oppDeltas, out.flags);
+    if (this.last.ended) this.done = true;
     return this.last;
   }
 
-  private snapshot(t: number, deltas: number[], flags: FaceFlags): RoundSnapshot {
-    const { countdownMs, durationMs } = gameConfig.round;
+  private winner(): Winner | null {
+    const lost = (s: RoundState | null) => s?.ended === 'crack' || s?.ended === 'zero';
+    if (!this.opp) return null;
+    const meLost = lost(this.me);
+    const oppLost = lost(this.opp);
+    if (meLost && oppLost) return 'draw';
+    if (meLost) return 'opp';
+    if (oppLost) return 'me';
+    if (this.me.ended === 'time') {
+      // La mort subite viendra avec la boucle de jeu en réseau ; ici une égalité reste une égalité.
+      const o = decideByTime(this.me.aura, this.opp.aura, this.cfg);
+      return o === 'a' ? 'me' : o === 'b' ? 'opp' : 'draw';
+    }
+    return null;
+  }
+
+  private snapshot(t: number, deltas: number[], oppDeltas: number[], flags: FaceFlags): RoundSnapshot {
+    const { countdownMs, durationMs } = this.cfg.round;
     const elapsedMs = t - this.startT;
+    const ended = this.me.ended ?? this.opp?.ended ?? null;
     return {
-      phase: this.state.ended ? 'ended' : roundPhase(elapsedMs),
+      phase: ended ? 'ended' : roundPhase(elapsedMs, this.cfg),
       elapsedMs,
       countdown: Math.max(0, Math.ceil((countdownMs - elapsedMs) / 1000)),
       timeLeftMs: Math.max(0, countdownMs + durationMs - elapsedMs),
-      aura: this.state.aura,
-      ended: this.state.ended,
+      aura: this.me.aura,
+      oppAura: this.opp?.aura ?? null,
+      ended,
+      winner: this.winner(),
       flags,
       deltas,
+      oppDeltas,
     };
   }
 }

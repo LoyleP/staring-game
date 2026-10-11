@@ -199,3 +199,27 @@ describe('frameFromResult', () => {
     expect(frameFromResult({ faceLandmarks: [] }, 480, 640, 5).face).toBe(false);
   });
 });
+
+describe('head movement reference', () => {
+  it('ne pénalise pas une position décalée mais tenue (pas de drain continu)', () => {
+    const det = new FaceEventDetector(BASE);
+    const a = run(det, 0, 500);
+    const moved = { noseX: BASE.noseX + 0.3 * BASE.faceWidth };
+    const b = run(det, a.end, 30_000, moved);
+    // Au bout de quelques secondes, la position tenue est la nouvelle référence.
+    const c = run(det, b.end, 3000, moved);
+    expect(c.last.flags.headMoving).toBe(false);
+  });
+
+  it('pénalise toujours un mouvement répété', () => {
+    const det = new FaceEventDetector(BASE);
+    let t = 0;
+    let moving = 0;
+    for (let i = 0; i < 12; i++) {
+      const r = run(det, t, 400, { noseX: BASE.noseX + (i % 2 ? 0.25 : -0.25) * BASE.faceWidth });
+      if (r.last.flags.headMoving) moving++;
+      t = r.end;
+    }
+    expect(moving).toBeGreaterThan(0);
+  });
+});
