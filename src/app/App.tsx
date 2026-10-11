@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Home } from '../ui/screens/Home';
+import { Room } from '../ui/screens/Room';
 import { Solo } from '../ui/screens/Solo';
 
 export function App() {
@@ -8,7 +9,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/solo" element={<Solo />} />
-        <Route path="/r/:code" element={<Home />} />
+        <Route path="/r/:code" element={<Room />} />
       </Routes>
     </BrowserRouter>
   );

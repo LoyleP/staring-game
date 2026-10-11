@@ -43,3 +43,4 @@ button { min-height: 52px; padding: 0 28px; border: 0; border-radius: var(--radi
 .end svg { transform: rotate(135deg); }
 
 .warn { margin: 0; padding: 6px 14px; border-radius: var(--radius); background: var(--loss); font-weight: 700; }
+button:disabled { opacity: 0.5; }

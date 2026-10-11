@@ -1,11 +1,12 @@
-import { redis } from './_lib/redis.js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { getStore } from './_lib/store.js';
 
-export default async function handler(_req: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }) {
+export default async function handler(_req: VercelRequest, res: VercelResponse) {
   try {
-    await redis.set('health:ping', '1', { ex: 30 });
-    const ok = (await redis.get('health:ping')) !== null;
-    res.status(ok ? 200 : 500).json({ redis: ok });
+    const store = getStore();
+    const ok = await store.ping();
+    res.status(ok ? 200 : 500).json({ store: store.kind, ok });
   } catch (e) {
-    res.status(500).json({ redis: false, error: (e as Error).message });
+    res.status(500).json({ ok: false, error: (e as Error).message });
   }
 }
