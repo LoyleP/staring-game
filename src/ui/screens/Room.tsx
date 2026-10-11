@@ -113,6 +113,7 @@ export function Room() {
             {statusText(s.peerPresent, s.connection, s.remoteVideo)}
           </p>
           {s.peerReady && <p className={solo.small}>Ton adversaire est prêt.</p>}
+          {debug && <p className={solo.small}>signalisation : {s.signalingTransport ?? '–'}</p>}
           {s.signalingDegraded && <p className={solo.warn}>Réseau instable</p>}
           <button disabled={!s.peerPresent} onClick={() => session?.setReady(!s.meReady)}>
             {s.meReady ? 'Prêt ✓ (annuler)' : 'Prêt'}
@@ -125,7 +126,7 @@ export function Room() {
           <header className={solo.top}>
             <span className={solo.pill}>
               {statusText(s.peerPresent, s.connection, s.remoteVideo)}
-              {debug && s.rtt !== null ? ` · ${s.rtt} ms` : ''}
+              {debug ? ` · ${s.rtt ?? '–'} ms · ${s.signalingTransport ?? '–'}` : ''}
             </span>
           </header>
           <footer className={solo.controls}>

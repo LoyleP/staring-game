@@ -17,10 +17,14 @@ export interface Store {
   setStatus(code: string, status: RoomStatus): Promise<void>;
   pushInbox(code: string, role: Role, messages: SignalMessage[], ttlSeconds: number): Promise<void>;
   popInbox(code: string, role: Role): Promise<SignalMessage[]>;
+  /** Réveille la connexion WebSocket du joueur `role` (sur n'importe quelle instance) : sa boîte contient du nouveau. */
+  subscribeInbox(code: string, role: Role, onWake: () => void): () => void;
   incrementCounter(key: string, windowSeconds: number): Promise<number>;
   saveMatch(id: string, data: unknown, ttlSeconds: number): Promise<void>;
   ping(): Promise<boolean>;
 }
+
+const wakeChannel = (code: string, role: Role) => `wake:${code}:${role}`;
 
 class RedisStore implements Store {
   readonly kind = 'redis' as const;
@@ -60,6 +64,13 @@ class RedisStore implements Store {
     const key = keys.inbox(code, role);
     await this.r.rpush(key, ...messages);
     await this.r.expire(key, ttl);
+    await this.r.publish(wakeChannel(code, role), '1');
+  }
+
+  subscribeInbox(code: string, role: Role, onWake: () => void) {
+    const sub = this.r.subscribe<string>([wakeChannel(code, role)]);
+    sub.on('message', () => onWake());
+    return () => void sub.unsubscribe().catch(() => undefined);
   }
 
   async popInbox(code: string, role: Role) {
@@ -88,12 +99,29 @@ interface Expiring<T> {
   expiresAt: number;
 }
 
+interface MemoryData {
+  rooms: Map<string, Expiring<RoomRecord>>;
+  inboxes: Map<string, Expiring<SignalMessage[]>>;
+  counters: Map<string, Expiring<number>>;
+  matches: Map<string, Expiring<unknown>>;
+  listeners: Map<string, Set<() => void>>;
+}
+
 class MemoryStore implements Store {
   readonly kind = 'memory' as const;
-  private rooms = new Map<string, Expiring<RoomRecord>>();
-  private inboxes = new Map<string, Expiring<SignalMessage[]>>();
-  private counters = new Map<string, Expiring<number>>();
-  private matches = new Map<string, Expiring<unknown>>();
+  // Les données survivent aux rechargements à chaud du serveur de développement ; le code de la classe, non.
+  private data: MemoryData = ((globalThis as { __auraMem?: MemoryData }).__auraMem ??= {
+    rooms: new Map(),
+    inboxes: new Map(),
+    counters: new Map(),
+    matches: new Map(),
+    listeners: new Map(),
+  });
+  private rooms = this.data.rooms;
+  private inboxes = this.data.inboxes;
+  private counters = this.data.counters;
+  private matches = this.data.matches;
+  private listeners = this.data.listeners;
 
   private live<T>(map: Map<string, Expiring<T>>, key: string): Expiring<T> | undefined {
     const e = map.get(key);
@@ -137,6 +165,15 @@ class MemoryStore implements Store {
     box.value.push(...messages);
     box.expiresAt = Date.now() + ttl * 1000;
     this.inboxes.set(key, box);
+    for (const wake of this.listeners.get(wakeChannel(code, role)) ?? []) wake();
+  }
+
+  subscribeInbox(code: string, role: Role, onWake: () => void) {
+    const ch = wakeChannel(code, role);
+    const set = this.listeners.get(ch) ?? new Set<() => void>();
+    set.add(onWake);
+    this.listeners.set(ch, set);
+    return () => void set.delete(onWake);
   }
 
   async popInbox(code: string, role: Role) {
@@ -163,10 +200,9 @@ class MemoryStore implements Store {
   }
 }
 
-// Singleton conservé entre les rechargements du serveur de développement.
-const g = globalThis as typeof globalThis & { __auraStore?: Store };
+let cached: Store | null = null;
 
 export function getStore(): Store {
-  g.__auraStore ??= redisConfigured() ? new RedisStore() : new MemoryStore();
-  return g.__auraStore;
+  cached ??= redisConfigured() ? new RedisStore() : new MemoryStore();
+  return cached;
 }

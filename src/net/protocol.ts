@@ -9,7 +9,9 @@ export type SignalMessage =
   | { type: 'peer-left' }
   | { type: 'offer'; sdp: string }
   | { type: 'answer'; sdp: string }
-  | { type: 'ice-candidate'; candidate: RTCIceCandidateInit | null };
+  | { type: 'ice-candidate'; candidate: RTCIceCandidateInit | null }
+  /** Message de jeu critique relayé par la signalisation quand le DataChannel est indisponible. */
+  | { type: 'relay'; message: GameMessage };
 
 export interface RoomJoinResponse {
   code: string;

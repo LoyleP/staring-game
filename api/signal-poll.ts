@@ -6,7 +6,7 @@ import { tokenMatches } from './_lib/tokens.js';
 
 const MAX_MESSAGES = 50;
 const MAX_BYTES = 16 * 1024;
-const RELAYED = new Set(['offer', 'answer', 'ice-candidate']);
+const RELAYED = new Set(['offer', 'answer', 'ice-candidate', 'relay']);
 
 /**
  * Signalisation de secours par HTTP : envoie les messages sortants et renvoie ceux en attente,

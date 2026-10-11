@@ -9,6 +9,18 @@ export function apiDevPlugin(): Plugin {
   return {
     name: 'aura-api-dev',
     configureServer(server) {
+      // WebSocket de signalisation : même module que sur Vercel, branché sur l'événement Upgrade de Vite.
+      server.httpServer?.on('upgrade', async (req: IncomingMessage, socket, head) => {
+        if (!req.url?.startsWith('/api/signal')) return; // le HMR de Vite gère les autres
+        try {
+          const mod = await server.ssrLoadModule('/api/signal.ts');
+          mod.upgrade(req, socket, head);
+        } catch (e) {
+          server.config.logger.error(`[api/signal] ${(e as Error).stack ?? e}`);
+          socket.destroy();
+        }
+      });
+
       server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next) => {
         if (!req.url?.startsWith('/api/')) return next();
         const url = new URL(req.url, 'http://localhost');

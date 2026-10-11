@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ConnectionState } from '../net/peer';
 import type { Role } from '../net/protocol';
+import type { SignalingTransport } from '../net/signaling';
 
 export type RoomScreen = 'joining' | 'error' | 'prepare' | 'loading' | 'denied' | 'lobby' | 'call';
 
@@ -12,6 +13,7 @@ interface RoomStore {
   peerPresent: boolean;
   connection: ConnectionState | 'idle';
   signalingDegraded: boolean;
+  signalingTransport: SignalingTransport | null;
   remoteVideo: boolean;
   meReady: boolean;
   peerReady: boolean;
@@ -30,6 +32,7 @@ const initial = {
   peerPresent: false,
   connection: 'idle' as const,
   signalingDegraded: false,
+  signalingTransport: null,
   remoteVideo: false,
   meReady: false,
   peerReady: false,

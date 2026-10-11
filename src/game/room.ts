@@ -3,7 +3,7 @@ import { gameConfig } from './gameConfig';
 import { ApiError, clearSession, enterRoom, fetchIceServers, leaveRoom, savedSession } from '../net/api';
 import { PeerSession } from '../net/peer';
 import { PROTOCOL_VERSION, type GameMessage, type SignalMessage } from '../net/protocol';
-import { PollSignaling } from '../net/signaling';
+import { Signaling } from '../net/signaling';
 import { CameraError, requestCamera, stopStream } from '../vision/camera';
 import { useRoomStore } from './roomStore';
 
@@ -12,7 +12,7 @@ const PING_MS = 2000;
 /** Salon à deux joueurs : jonction, caméra, connexion WebRTC et état "prêt". */
 export class RoomSession {
   private token = '';
-  private signaling: PollSignaling | null = null;
+  private signaling: Signaling | null = null;
   private peer: PeerSession | null = null;
   private stream: MediaStream | null = null;
   private iceServers: Awaited<ReturnType<typeof fetchIceServers>> | null = null;
@@ -36,12 +36,11 @@ export class RoomSession {
       if (this.disposed) return;
       this.token = room.token;
       useRoomStore.getState().set({ role: room.role, peerPresent: room.peerPresent, screen: 'prepare' });
-      this.signaling = new PollSignaling(
-        this.code,
-        this.token,
-        (m) => this.onSignal(m),
-        (s) => useRoomStore.getState().set({ signalingDegraded: s === 'degraded' }),
-      );
+      this.signaling = new Signaling(this.code, this.token, {
+        onMessage: (m) => this.onSignal(m),
+        onStatus: (s) => useRoomStore.getState().set({ signalingDegraded: s === 'degraded' }),
+        onTransport: (t) => useRoomStore.getState().set({ signalingTransport: t }),
+      });
       this.signaling.start();
       void fetchIceServers().then((s) => (this.iceServers = s));
     } catch (e) {
