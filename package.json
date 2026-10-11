@@ -10,9 +10,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "e2e": "playwright test",
+    "e2e": "playwright test --grep-invert deployed",
     "postinstall": "node scripts/copy-mediapipe.mjs",
-    "dev:phone": "DEV_PHONE=1 vite"
+    "dev:phone": "DEV_PHONE=1 vite",
+    "e2e:deployed": "playwright test e2e/deployed.spec.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.1.0",
