@@ -26,7 +26,7 @@ export const gameConfig = {
     headReferenceTauMs: 4_000,
     calibrationMs: 3_000,
     /** Largeur minimale du visage (en part de la largeur de l'image) pour calibrer : oblige à se rapprocher. */
-    minFaceWidthRatio: 0.5,
+    minFaceWidthRatio: 0.4,
     calibrationMinDetected: 0.8,
     inferenceFps: 15,
     inferenceFpsMainThread: 10,
