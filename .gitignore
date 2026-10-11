@@ -6,3 +6,6 @@ playwright-report
 test-results
 .DS_Store
 public/mediapipe/wasm
+sounds-source
+public/sounds/*.mp3
+public/sounds/*.ogg

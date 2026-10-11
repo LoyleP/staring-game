@@ -5,6 +5,7 @@ import {
   createRoundState,
   decideByTime,
   roundPhase,
+  spend,
   tick,
   type RoundEnd,
   type RoundPhase,
@@ -80,6 +81,17 @@ export class SoloRound {
     this.last = this.snapshot(t, deltas, oppDeltas, out.flags);
     if (this.last.ended) this.done = true;
     return this.last;
+  }
+
+  /** Applique le coût d'un son lancé (négatif) ; renvoie la variation réellement appliquée. */
+  spendAura(side: 'me' | 'opp', cost: number, t: number): number {
+    const phase = roundPhase(t - this.startT, this.cfg);
+    const target = side === 'me' ? this.me : this.opp;
+    if (this.done || !target) return 0;
+    const r = spend(target, cost, phase);
+    if (side === 'me') this.me = r.state;
+    else this.opp = r.state;
+    return r.delta;
   }
 
   private winner(): Winner | null {

@@ -1,3 +1,7 @@
+import { canFire, createBoard, fire, reloadProgress, type BoardState } from '../audio/board';
+import { loadSounds, playSound } from '../audio/soundboard';
+import { SOUNDS } from '../audio/sounds';
+import { closeAudio, unlockAudio } from '../audio/unlock';
 import { Calibrator } from '../vision/calibration';
 import { CameraError, requestCamera, stopStream } from '../vision/camera';
 import { FaceEventDetector } from '../vision/detector';
@@ -22,6 +26,7 @@ export class SoloSession {
   private round: SoloRound | null = null;
   private roundStart = 0;
   private bot: FakeOpponent | null = null;
+  private board: BoardState | null = null;
   private floaterId = 0;
   private recent: string[] = [];
   private mode: 'idle' | 'calibrating' | 'running' = 'idle';
@@ -36,10 +41,13 @@ export class SoloSession {
     const store = useSoloStore.getState();
     store.set({ screen: 'loading', message: null });
     try {
+      // Dans le geste du tap : débloque l'audio avant tout await long.
+      await unlockAudio();
       this.stream = await requestCamera();
       this.video.srcObject = this.stream;
       await this.video.play();
       this.tracker = await startFaceTracker(this.video, (f) => this.onFrame(f));
+      void loadSounds();
       this.startCalibration();
     } catch (e) {
       this.release();
@@ -63,12 +71,39 @@ export class SoloSession {
     this.detector = new FaceEventDetector(this.baseline);
     this.round = null; // l'horloge démarre à la première image analysée
     this.bot = new FakeOpponent();
+    this.board = createBoard(SOUNDS.map((x) => x.id));
     this.mode = 'running';
-    useSoloStore.getState().set({ screen: 'running', snap: null, floaters: [] });
+    useSoloStore.getState().set({ screen: 'running', snap: null, floaters: [], hand: this.hand(), reload: 1 });
+  }
+
+  /** Tap sur un bouton de la soundboard. */
+  fireSound(index: number): void {
+    const store = useSoloStore.getState();
+    const board = this.board;
+    if (!board || !this.round || this.mode !== 'running' || store.snap?.phase !== 'play') return;
+    const now = performance.now();
+    if (canFire(board, index, now) !== 'ok') return;
+    const id = board.hand[index] as string;
+    this.board = fire(board, index, now);
+    playSound(id);
+    const delta = this.round.spendAura('me', gameConfig.soundboard.auraCost, now);
+    if (delta !== 0) store.set({ floaters: [...store.floaters, { id: now, side: 'me', delta }] });
+    this.bot?.provoke(now);
+    store.set({ hand: this.hand(), reload: 0 });
+  }
+
+  private hand() {
+    const board = this.board;
+    if (!board) return [];
+    return board.hand.map((id, i) => ({
+      sound: SOUNDS.find((x) => x.id === id) ?? { id, label: id, url: '' },
+      used: board.used[i] ?? false,
+    }));
   }
 
   dispose(): void {
     this.release();
+    closeAudio();
     useSoloStore.getState().reset();
   }
 
@@ -113,6 +148,12 @@ export class SoloSession {
     }
     const out = this.detector.update(frame);
     const bot = this.bot?.step(frame.t, roundPhase(frame.t - this.roundStart));
+    if (bot?.sound) {
+      const pick = SOUNDS[Math.floor(Math.random() * SOUNDS.length)];
+      if (pick) playSound(pick.id);
+      const cost = this.round.spendAura('opp', gameConfig.soundboard.auraCost, frame.t);
+      if (cost !== 0) useSoloStore.getState().set({ floaters: [...useSoloStore.getState().floaters, { id: performance.now() + 0.5, side: 'opp', delta: cost }] });
+    }
     const snap = this.round.step(frame.t, out, bot?.out);
     const store = useSoloStore.getState();
 
@@ -128,6 +169,7 @@ export class SoloSession {
       snap,
       floaters,
       oppExpression: bot?.expression ?? 'neutral',
+      reload: this.board ? reloadProgress(this.board, performance.now()) : 1,
       debug: this.debugEnabled
         ? {
             ...this.detector.debug,

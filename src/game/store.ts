@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { DetectorDebug } from '../vision/detector';
 import type { Expression } from './fakeOpponent';
+import type { SoundDef } from '../audio/sounds';
 import type { RoundSnapshot } from './machine';
 
 export type SoloScreen =
@@ -19,6 +20,11 @@ export interface Floater {
   delta: number;
 }
 
+export interface HandCard {
+  sound: SoundDef;
+  used: boolean;
+}
+
 export interface DebugInfo extends DetectorDebug {
   fps: number;
   mode: string;
@@ -33,6 +39,9 @@ interface SoloStore {
   snap: RoundSnapshot | null;
   floaters: Floater[];
   oppExpression: Expression;
+  hand: HandCard[];
+  /** 0 = recharge en cours, 1 = prêt. */
+  reload: number;
   debug: DebugInfo | null;
   set: (patch: Partial<Omit<SoloStore, 'set' | 'reset'>>) => void;
   reset: () => void;
@@ -45,6 +54,8 @@ const initial = {
   snap: null,
   floaters: [] as Floater[],
   oppExpression: 'neutral' as Expression,
+  hand: [] as HandCard[],
+  reload: 1,
   debug: null,
 };
 

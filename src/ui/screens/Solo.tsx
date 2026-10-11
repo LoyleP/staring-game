@@ -4,6 +4,7 @@ import { gameConfig } from '../../game/gameConfig';
 import { SoloSession } from '../../game/solo';
 import { useSoloStore } from '../../game/store';
 import { permissionHelp } from '../../vision/camera';
+import { SoundButton } from '../components/SoundButton';
 import { AuraGauge } from '../components/AuraGauge';
 import { DebugOverlay } from '../components/DebugOverlay';
 import { OpponentView } from '../components/OpponentView';
@@ -20,7 +21,7 @@ export function Solo() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const debug = params.get('debug') === '1';
-  const { screen, message, calibProgress, snap, floaters, oppExpression } = useSoloStore();
+  const { screen, message, calibProgress, snap, floaters, oppExpression, hand, reload } = useSoloStore();
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -136,6 +137,17 @@ export function Solo() {
               <path d="M12 9c-3.3 0-6.4 1-8.6 2.8-.4.4-.5 1-.1 1.4l1.6 2c.3.4.9.5 1.3.2l2.4-1.5c.3-.2.5-.5.5-.9V12c1.5-.5 3.5-.5 5 0v1c0 .4.2.7.5.9l2.4 1.5c.4.3 1 .2 1.3-.2l1.6-2c.4-.4.3-1-.1-1.4C18.4 10 15.3 9 12 9z" />
             </svg>
           </button>
+          {screen === 'running' &&
+            hand.map((card, i) => (
+              <SoundButton
+                key={card.sound.id}
+                label={card.sound.label}
+                used={card.used}
+                reload={reload}
+                disabled={snap?.phase !== 'play'}
+                onFire={() => session?.fireSound(i)}
+              />
+            ))}
         </footer>
       )}
 

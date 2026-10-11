@@ -30,6 +30,9 @@ export class FakeOpponent {
   private rand: () => number;
   private action: Action | null = null;
   private nextAt: number | null = null;
+  private nextSoundAt: number | null = null;
+  private soundsFired = 0;
+  private pending: FaceEvent[] = [];
   readonly name = 'Bot';
 
   constructor(
@@ -39,9 +42,29 @@ export class FakeOpponent {
     this.rand = mulberry32(seed);
   }
 
-  step(t: number, phase: RoundPhase): { out: DetectorOutput; expression: Expression } {
-    const events: FaceEvent[] = [];
-    if (phase !== 'play') return { out: this.out(events, null), expression: 'neutral' };
+  /** Le joueur vient de lancer un son : le bot peut craquer en réaction. */
+  provoke(t: number): void {
+    const r = this.rand();
+    if (r < 0.05) {
+      this.pending.push({ type: 'laugh', t });
+      this.action = { kind: 'laugh', until: t + 1500 };
+    } else if (r < 0.5) {
+      this.pending.push({ type: 'smileLight', t });
+      this.action = { kind: 'smile', until: t + 900 };
+    }
+  }
+
+  step(t: number, phase: RoundPhase): { out: DetectorOutput; expression: Expression; sound: boolean } {
+    const events: FaceEvent[] = this.pending.splice(0);
+    if (phase !== 'play') return { out: this.out(events, null), expression: 'neutral', sound: false };
+
+    let sound = false;
+    this.nextSoundAt ??= t + 5000 + this.rand() * 8000;
+    if (this.soundsFired < 3 && t >= this.nextSoundAt) {
+      sound = true;
+      this.soundsFired += 1;
+      this.nextSoundAt = t + 8000 + this.rand() * 6000;
+    }
 
     this.nextAt ??= t + this.gap();
     if (this.action && t >= this.action.until) this.action = null;
@@ -63,7 +86,7 @@ export class FakeOpponent {
       }
       this.nextAt = this.action.until + this.gap();
     }
-    return { out: this.out(events, this.action), expression: this.action?.kind ?? 'neutral' };
+    return { out: this.out(events, this.action), expression: this.action?.kind ?? 'neutral', sound };
   }
 
   private gap(): number {

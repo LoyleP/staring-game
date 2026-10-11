@@ -32,6 +32,12 @@ function withAura(state: RoundState, delta: number): RoundState {
   return { aura, ended: state.ended ?? (aura <= 0 ? 'zero' : null) };
 }
 
+/** Coût d'une action volontaire (son lancé). Sans effet hors de la phase de jeu. */
+export function spend(state: RoundState, cost: number, phase: RoundPhase): { state: RoundState; delta: number } {
+  if (phase !== 'play' || state.ended) return { state, delta: 0 };
+  return { state: withAura(state, cost), delta: cost };
+}
+
 /** Pénalité ponctuelle d'un événement facial. Sans effet hors de la phase de jeu. */
 export function applyEvent(
   state: RoundState,
