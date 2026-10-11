@@ -33,7 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (body.action) {
       case 'create': {
         const ip = clientIpHash(req.headers, req.socket?.remoteAddress);
-        if (await limited(createLimitKey(ip), createLimitPerHour, 3600)) {
+        // Le store mémoire ne sert qu'en local (développement, tests) : pas de limite de création.
+        if (store.kind === 'redis' && (await limited(createLimitKey(ip), createLimitPerHour, 3600))) {
           return res.status(429).json({ error: 'rate-limited' });
         }
         const hostToken = randomToken();

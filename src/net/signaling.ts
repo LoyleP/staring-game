@@ -1,4 +1,5 @@
 import { gameConfig } from '../game/gameConfig';
+import { e2e, e2eWindow } from '../testing/e2e';
 import type { SignalMessage } from './protocol';
 
 export type SignalingStatus = 'connected' | 'degraded';
@@ -43,7 +44,8 @@ export class Signaling {
   start(): void {
     if (this.running) return;
     this.running = true;
-    if (gameConfig.net.forceSignalPolling || typeof WebSocket === 'undefined') this.startPolling();
+    const forcePoll = gameConfig.net.forceSignalPolling || (e2e() && e2eWindow().__AURA_FORCE_POLL__ === true);
+    if (forcePoll || typeof WebSocket === 'undefined') this.startPolling();
     else this.connectWs();
   }
 

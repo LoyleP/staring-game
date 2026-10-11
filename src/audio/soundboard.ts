@@ -1,4 +1,5 @@
 import { SOUNDS } from './sounds';
+import { e2e, e2eWindow } from '../testing/e2e';
 import { audioContext, resumeAudio } from './unlock';
 
 const buffers = new Map<string, AudioBuffer>();
@@ -29,6 +30,8 @@ export async function loadSounds(): Promise<void> {
   await Promise.all(SOUNDS.map((s) => loadOne(s.id, s.url)));
 }
 
+if (e2e()) e2eWindow().__auraAudioStatus = () => audioStatus();
+
 /** État pour l'overlay de debug. */
 export function audioStatus(): { state: string; loaded: number; total: number; error: string | null } {
   return { state: audioContext()?.state ?? 'none', loaded: buffers.size, total: SOUNDS.length, error: lastError };
@@ -39,6 +42,7 @@ export function playSound(id: string, delayMs = 0): void {
   const ctx = audioContext();
   if (!ctx) return;
   const start = (buffer: AudioBuffer) => {
+    if (e2e()) (e2eWindow().__auraAudioLog ??= []).push({ id, state: ctx.state, at: performance.now() + delayMs, loaded: true });
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(ctx.destination);
@@ -48,6 +52,7 @@ export function playSound(id: string, delayMs = 0): void {
     const buffer = buffers.get(id);
     if (buffer) return start(buffer);
     // Pas encore chargé (ou échec) : on retente une fois puis on joue.
+    if (e2e()) (e2eWindow().__auraAudioLog ??= []).push({ id, state: ctx.state, at: performance.now(), loaded: false });
     const sound = SOUNDS.find((s) => s.id === id);
     if (sound) void loadOne(id, sound.url).then(() => buffers.has(id) && start(buffers.get(id) as AudioBuffer));
   };

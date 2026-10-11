@@ -2,9 +2,10 @@ import { gameConfig } from '../game/gameConfig';
 import { frameFromResult } from './detector';
 import type { WorkerIn, WorkerOut } from './faceWorker';
 import type { FaceFrame } from './types';
+import { e2e } from '../testing/e2e';
 
 export interface FaceTracker {
-  mode: 'worker' | 'main';
+  mode: 'worker' | 'main' | 'e2e';
   delegate: string;
   /** Analyses par seconde mesurées sur la dernière seconde. */
   fps: () => number;
@@ -17,6 +18,10 @@ export async function startFaceTracker(
   onFrame: (frame: FaceFrame) => void,
   options: { forceMain?: boolean } = {},
 ): Promise<FaceTracker> {
+  if (e2e()) {
+    const { startFakeTracker } = await import('./fakeTracker');
+    return startFakeTracker(onFrame);
+  }
   const origin = location.origin;
   const worker = options.forceMain ? null : await tryWorker(origin);
   const stamps: number[] = [];

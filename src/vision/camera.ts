@@ -1,6 +1,6 @@
 import { gameConfig } from '../game/gameConfig';
 
-export type CameraErrorKind = 'denied' | 'notfound' | 'other';
+export type CameraErrorKind = 'denied' | 'busy' | 'notfound' | 'other';
 
 export class CameraError extends Error {
   constructor(
@@ -14,7 +14,7 @@ export class CameraError extends Error {
 /** Caméra frontale portrait. À appeler depuis un geste utilisateur. */
 export async function requestCamera(audio = false): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new CameraError('other', 'Caméra indisponible (HTTPS requis ou navigateur non supporté).');
+    throw new CameraError('other', 'Caméra indisponible : ouvre le lien dans Safari ou Chrome (connexion sécurisée requise).');
   }
   const { width, height, fps } = gameConfig.media;
   try {
@@ -25,8 +25,13 @@ export async function requestCamera(audio = false): Promise<MediaStream> {
   } catch (e) {
     const name = (e as DOMException).name;
     if (name === 'NotAllowedError' || name === 'SecurityError') throw new CameraError('denied', name);
-    if (name === 'NotFoundError' || name === 'OverconstrainedError') throw new CameraError('notfound', name);
-    throw new CameraError('other', String(e));
+    if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
+      throw new CameraError('busy', 'Ta caméra est déjà utilisée par une autre application (FaceTime, appareil photo…). Ferme-la puis réessaie.');
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      throw new CameraError('notfound', 'Aucune caméra frontale trouvée sur cet appareil.');
+    }
+    throw new CameraError('other', `Ce navigateur n’a pas pu ouvrir la caméra (${name || String(e)}). Essaie avec Safari ou Chrome à jour.`);
   }
 }
 
