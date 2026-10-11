@@ -57,7 +57,7 @@ export class RoomSession {
     const store = useRoomStore.getState();
     store.set({ screen: 'loading' });
     try {
-      await unlockAudio();
+      await unlockAudio(true);
       this.stream = await requestCamera(true);
       this.localVideo.srcObject = this.stream;
       await this.localVideo.play().catch(() => undefined);
