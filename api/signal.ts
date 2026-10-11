@@ -19,6 +19,15 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BYTES });
  * sa boîte et lui transmet. Les deux modes de transport restent ainsi interopérables entre instances.
  */
 async function onConnection(ws: WebSocket, req: IncomingMessage) {
+  // Les messages envoyés dès l'ouverture arrivent avant la fin de la vérification du jeton (aller-retour Redis) :
+  // on les met de côté et on les traite une fois la connexion validée.
+  let handle: ((data: Buffer) => void) | null = null;
+  const early: Buffer[] = [];
+  ws.on('message', (data) => (handle ? handle(data as Buffer) : early.push(data as Buffer)));
+  let unsubscribe: () => void = () => undefined;
+  ws.on('close', () => unsubscribe());
+  ws.on('error', () => unsubscribe());
+
   const url = new URL(req.url ?? '', 'http://localhost');
   const code = (url.searchParams.get('code') ?? '').toUpperCase();
   const token = url.searchParams.get('token') ?? '';
@@ -47,7 +56,6 @@ async function onConnection(ws: WebSocket, req: IncomingMessage) {
       .catch(() => undefined);
   };
 
-  let unsubscribe: () => void;
   try {
     unsubscribe = store.subscribeInbox(code, role, flush);
   } catch {
@@ -57,7 +65,7 @@ async function onConnection(ws: WebSocket, req: IncomingMessage) {
 
   let windowStart = Date.now();
   let count = 0;
-  ws.on('message', (data) => {
+  handle = (data) => {
     const now = Date.now();
     if (now - windowStart > 1000) [windowStart, count] = [now, 0];
     if (++count > MAX_PER_SECOND) return ws.close(4429, 'rate');
@@ -72,9 +80,8 @@ async function onConnection(ws: WebSocket, req: IncomingMessage) {
     chain = chain
       .then(() => store.pushInbox(code, other, [m as SignalMessage], gameConfig.room.ttlSeconds))
       .catch(() => undefined);
-  });
-  ws.on('close', () => unsubscribe());
-  ws.on('error', () => unsubscribe());
+  };
+  for (const data of early.splice(0)) handle(data);
 }
 
 wss.on('connection', (ws, req) => void onConnection(ws, req));
