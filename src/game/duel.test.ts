@@ -14,6 +14,8 @@ class Pair {
   hostStore = createDuelStore();
   guestStore = createDuelStore();
   connected = true;
+  /** Sons programmés, avec leur instant de lecture converti dans l'horloge de l'hôte. */
+  plays: { side: MatchSide; id: string; hostTime: number }[] = [];
   /** Détecteur scripté par côté : appelé à chaque image, renvoie les événements. */
   script: Record<MatchSide, (elapsedMs: number, round: number) => DetectorOutput> = {
     host: () => calm,
@@ -38,6 +40,8 @@ class Pair {
         toHost: (t) => t + (side === 'guest' ? GUEST_LAG : 0),
         now: () => performance.now() - lag,
         store,
+        play: (id, delay) =>
+          this.plays.push({ side, id, hostTime: performance.now() - lag + delay + (side === 'guest' ? GUEST_LAG : 0) }),
       });
     };
     this.host = mk('host', this.hostStore, 0);
@@ -188,5 +192,69 @@ describe('Duel : deux joueurs simulés', () => {
     expect(p.guestStore.getState().phase).toBe('round');
     expect(p.hostStore.getState().wins).toEqual({ me: 0, opp: 0 });
     expect(p.guestStore.getState().matchWinner).toBeNull();
+  });
+
+  describe('soundboard', () => {
+    it('joue le même son au même instant sur les deux téléphones, malgré 7 s de décalage d’horloge', () => {
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(8000);
+      p.guest.fireSound(0);
+      p.run(500);
+      expect(p.plays).toHaveLength(2);
+      const [a, b] = p.plays;
+      expect(a?.id).toBe(b?.id);
+      expect(new Set(p.plays.map((x) => x.side))).toEqual(new Set(['host', 'guest']));
+      expect(Math.abs((a?.hostTime ?? 0) - (b?.hostTime ?? 99999))).toBeLessThan(5);
+    });
+
+    it('coûte 50 d’aura au lanceur et l’adversaire le voit', () => {
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(8000);
+      p.guest.fireSound(1);
+      p.run(500);
+      expect(p.guestStore.getState().snap?.aura).toBe(950);
+      expect(p.hostStore.getState().snap?.oppAura).toBe(950);
+      expect(p.hostStore.getState().floaters.some((f) => f.side === 'opp' && f.delta === -50)).toBe(true);
+    });
+
+    it('recharge de 8 s commune, 3 munitions, une carte ne sert qu’une fois', () => {
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(8000);
+      p.guest.fireSound(0);
+      p.run(1000);
+      p.guest.fireSound(1); // en recharge : ignoré
+      p.run(500);
+      expect(p.guestStore.getState().hand.filter((c) => c.used)).toHaveLength(1);
+      p.run(8000);
+      p.guest.fireSound(0); // déjà utilisée : ignoré
+      p.guest.fireSound(1);
+      p.run(500);
+      expect(p.guestStore.getState().hand.filter((c) => c.used)).toHaveLength(2);
+      expect(p.guestStore.getState().snap?.aura).toBe(900);
+    });
+
+    it('refuse pendant le compte à rebours et après un craquage', () => {
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(3000); // compte à rebours
+      p.guest.fireSound(0);
+      p.run(300);
+      expect(p.plays).toHaveLength(0);
+      expect(p.guestStore.getState().snap?.aura).toBe(1000);
+    });
+
+    it('remet une main neuve à chaque manche', () => {
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(8000);
+      p.guest.fireSound(0);
+      trigger(p, 'guest', 'laugh', 1000);
+      p.run(20_000);
+      expect(p.guestStore.getState().round).toBe(2);
+      expect(p.guestStore.getState().hand.every((c) => !c.used)).toBe(true);
+    });
   });
 });

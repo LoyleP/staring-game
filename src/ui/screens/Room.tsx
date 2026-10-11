@@ -6,6 +6,7 @@ import { RoomSession } from '../../game/room';
 import { useRoomStore } from '../../game/roomStore';
 import { permissionHelp } from '../../vision/camera';
 import { MatchHud } from '../components/MatchHud';
+import { SoundButton } from '../components/SoundButton';
 import solo from './Solo.module.css';
 import styles from './Room.module.css';
 
@@ -222,6 +223,17 @@ export function Room() {
                 <path d="M12 9c-3.3 0-6.4 1-8.6 2.8-.4.4-.5 1-.1 1.4l1.6 2c.3.4.9.5 1.3.2l2.4-1.5c.3-.2.5-.5.5-.9V12c1.5-.5 3.5-.5 5 0v1c0 .4.2.7.5.9l2.4 1.5c.4.3 1 .2 1.3-.2l1.6-2c.4-.4.3-1-.1-1.4C18.4 10 15.3 9 12 9z" />
               </svg>
             </button>
+            {d.phase === 'round' &&
+              d.hand.map((card, i) => (
+                <SoundButton
+                  key={card.sound.id}
+                  label={card.sound.label}
+                  used={card.used}
+                  reload={d.reload}
+                  disabled={d.snap?.phase !== 'play'}
+                  onFire={() => session?.fireSound(i)}
+                />
+              ))}
           </footer>
         </>
       )}

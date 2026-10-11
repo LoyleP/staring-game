@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { MatchResult } from '../net/protocol';
 import type { RoundSnapshot } from './machine';
-import type { Floater } from './store';
+import type { Floater, HandCard } from './store';
 
 export type DuelPhase = 'idle' | 'round' | 'between' | 'ended';
 export type SideView = 'me' | 'opp';
@@ -28,6 +28,9 @@ interface DuelStore {
   forfeitIn: number | null;
   rematchMe: boolean;
   rematchOpp: boolean;
+  /** Sons de la manche (3 cartes à usage unique) et progression de la recharge commune. */
+  hand: HandCard[];
+  reload: number;
   set: (patch: Partial<Omit<DuelStore, 'set' | 'reset'>>) => void;
   reset: () => void;
 }
@@ -46,6 +49,8 @@ const initial = {
   forfeitIn: null,
   rematchMe: false,
   rematchOpp: false,
+  hand: [] as HandCard[],
+  reload: 1,
 };
 
 export const createDuelStore = () =>

@@ -1,3 +1,4 @@
+import { loadSounds, playSound } from '../audio/soundboard';
 import { closeAudio, unlockAudio } from '../audio/unlock';
 import { gameConfig } from './gameConfig';
 import { ApiError, clearSession, enterRoom, fetchIceServers, leaveRoom, savedSession } from '../net/api';
@@ -66,6 +67,7 @@ export class RoomSession {
     store.set({ screen: 'loading' });
     try {
       await unlockAudio(gameConfig.net.callAudio);
+      void loadSounds();
       this.stream = await requestCamera(gameConfig.net.callAudio);
       this.localVideo.srcObject = this.stream;
       await this.localVideo.play().catch(() => undefined);
@@ -77,6 +79,7 @@ export class RoomSession {
         toLocal: (t) => t - this.offset,
         toHost: (t) => t + this.offset,
         now: () => performance.now(),
+        play: (id, delayMs) => playSound(id, delayMs),
       });
       this.duel.startWatchdog(() => {
         const st = useRoomStore.getState();
@@ -253,6 +256,10 @@ export class RoomSession {
     const duel = this.duel;
     this.pipeline?.watch((out, frame) => duel?.onFrame(out, frame));
     if (s.role === 'host') duel?.startMatch();
+  }
+
+  fireSound(index: number): void {
+    this.duel?.fireSound(index);
   }
 
   requestRematch(): void {

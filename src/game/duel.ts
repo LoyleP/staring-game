@@ -1,3 +1,5 @@
+import { canFire, createBoard, fire, reloadProgress, type BoardState } from '../audio/board';
+import { SOUNDS } from '../audio/sounds';
 import type { DetectorOutput, FaceFrame } from '../vision/types';
 import type { GameMessage, MatchResult, MatchSide, RoundEndReason } from '../net/protocol';
 import { addWin, decideAtTime, decideCrack, decideSuddenDeath, matchWinner, other, type Wins } from './matchLogic';
@@ -25,6 +27,8 @@ export interface DuelDeps {
   now: () => number;
   /** Store de l'affichage (injectable pour les tests). */
   store?: DuelStoreHook;
+  /** Lecture d'un son `delayMs` plus tard (injectable pour les tests). */
+  play?: (id: string, delayMs: number) => void;
 }
 
 /**
@@ -50,6 +54,7 @@ export class Duel {
   private timeEndHandled = false;
   private matchOver = false;
   private rematch = { me: false, opp: false };
+  private board: BoardState | null = null;
 
   private readonly view: DuelStoreHook;
 
@@ -125,6 +130,9 @@ export class Duel {
         this.lastOppAura = this.d.now();
         this.round?.setOppAura(m.aura);
         break;
+      case 'sound':
+        this.d.play?.(m.id, Math.max(0, this.d.toLocal(m.playAt) - this.d.now()));
+        break;
       case 'crack':
         if (this.d.side === 'host') this.hostOnCrack(other(this.d.side), m.reason);
         break;
@@ -174,7 +182,8 @@ export class Duel {
     this.cracks = [];
     this.lastAuraSent = 0;
     this.lastOppAura = this.d.now();
-    this.view.getState().set({ phase: 'round', round, snap: null, floaters: [], suddenDeath: false });
+    this.board = createBoard(SOUNDS.map((x) => x.id));
+    this.view.getState().set({ phase: 'round', round, snap: null, floaters: [], suddenDeath: false, hand: this.hand(), reload: 1 });
   }
 
   private beginSuddenDeath(endLocal: number): void {
@@ -190,6 +199,36 @@ export class Duel {
     this.timeEndHandled = false;
     this.lastOppAura = this.d.now();
     this.view.getState().set({ suddenDeath: true });
+  }
+
+  /** Tap sur un son : coût d'aura, lecture sur les deux téléphones au même instant (horloge de l'hôte). */
+  fireSound(index: number): void {
+    const round = this.round;
+    const board = this.board;
+    const snap = this.view.getState().snap;
+    if (!round || !board || this.decided || this.selfEnded || snap?.phase !== 'play') return;
+    const now = this.d.now();
+    if (canFire(board, index, now) !== 'ok') return;
+    const id = board.hand[index] as string;
+    this.board = fire(board, index, now);
+    const playAt = this.d.toHost(now) + gameConfig.soundboard.playDelayMs;
+    this.d.sendCritical({ type: 'sound', id, playAt });
+    this.d.play?.(id, gameConfig.soundboard.playDelayMs);
+    const cost = round.spendAura('me', gameConfig.soundboard.auraCost, now);
+    if (cost !== 0) {
+      this.d.send({ type: 'penalty', kind: 'sound', amount: cost, t: now });
+      this.addFloater('me', cost);
+    }
+    this.view.getState().set({ hand: this.hand(), reload: 0 });
+  }
+
+  private hand() {
+    const board = this.board;
+    if (!board) return [];
+    return board.hand.map((id, i) => ({
+      sound: SOUNDS.find((x) => x.id === id) ?? { id, label: id, url: '' },
+      used: board.used[i] ?? false,
+    }));
   }
 
   /** Image analysée de mon visage. */
@@ -315,7 +354,11 @@ export class Duel {
   private publish(snap: RoundSnapshot): void {
     const store = this.view.getState();
     const now = performance.now();
-    store.set({ snap, floaters: store.floaters.filter((f) => now - f.id < FLOATER_MS) });
+    store.set({
+      snap,
+      floaters: store.floaters.filter((f) => now - f.id < FLOATER_MS),
+      reload: this.board ? reloadProgress(this.board, this.d.now()) : 1,
+    });
   }
 
   private addFloater(side: SideView, delta: number): void {
