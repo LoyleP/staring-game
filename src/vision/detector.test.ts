@@ -78,7 +78,7 @@ describe('FaceEventDetector', () => {
     let t = 0;
     const all: FaceEvent[] = [];
     for (let i = 0; i < 2; i++) {
-      const smile = run(det, t, 600, { smile: 0.65 });
+      const smile = run(det, t, 600, { smile: 0.5 });
       const rest = run(det, smile.end, 300);
       all.push(...smile.events, ...rest.events);
       t = rest.end;
@@ -129,7 +129,7 @@ describe('FaceEventDetector', () => {
   it('neutralise un sourire au repos grâce à la calibration', () => {
     const restingSmile: Baseline = { ...BASE, smile: 0.3 };
     const det = new FaceEventDetector(restingSmile);
-    expect(det.thresholds.smileLight).toBeCloseTo(0.8);
+    expect(det.thresholds.smileLight).toBeCloseTo(0.7);
     expect(run(det, 0, 5000, { smile: 0.6 }).events).toEqual([]);
     const plain = new FaceEventDetector(BASE);
     expect(run(plain, 0, 5000, { smile: 0.6 }).events.map((e) => e.type)).toEqual(['smileLight']);

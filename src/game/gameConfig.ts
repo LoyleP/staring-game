@@ -12,10 +12,10 @@ export const gameConfig = {
     suddenDeathMs: 15_000,
   },
   penalties: {
-    smileLight: { threshold: 0.5, minMs: 400, aura: -150, cooldownMs: 1_500 },
-    smileFull: { threshold: 0.75, minMs: 400, aura: -400, cooldownMs: 1_500 },
-    laugh: { smile: 0.6, jawOpen: 0.55, minMs: 500, aura: -1000 },
-    headMove: { nosePct: 0.12, minMs: 700, auraPerSecond: -50 },
+    smileLight: { threshold: 0.4, minMs: 300, aura: -150, cooldownMs: 1_500 },
+    smileFull: { threshold: 0.65, minMs: 300, aura: -400, cooldownMs: 1_500 },
+    laugh: { smile: 0.5, jawOpen: 0.45, minMs: 400, aura: -1000 },
+    headMove: { nosePct: 0.1, minMs: 600, auraPerSecond: -50 },
     faceLost: { minMs: 1_000, aura: -200, auraPerSecond: -100 },
   },
   detection: {
