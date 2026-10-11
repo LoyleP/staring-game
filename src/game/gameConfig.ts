@@ -40,6 +40,8 @@ export const gameConfig = {
     reconnectGraceMs: 15_000,
     iceRestartDelayMs: 3_000,
     forceSignalPolling: false,
+    /** Voix entre les joueurs (micro et audio adverse). Les sons de la soundboard restent actifs. */
+    callAudio: false,
   },
   media: { width: 480, height: 640, fps: 24, maxBitrateKbps: 600 },
   room: { codeLength: 6, ttlSeconds: 7_200, createLimitPerHour: 10 },

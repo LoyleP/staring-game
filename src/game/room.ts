@@ -1,4 +1,5 @@
 import { closeAudio, unlockAudio } from '../audio/unlock';
+import { gameConfig } from './gameConfig';
 import { ApiError, clearSession, enterRoom, fetchIceServers, leaveRoom, savedSession } from '../net/api';
 import { PeerSession } from '../net/peer';
 import { PROTOCOL_VERSION, type GameMessage, type SignalMessage } from '../net/protocol';
@@ -57,8 +58,8 @@ export class RoomSession {
     const store = useRoomStore.getState();
     store.set({ screen: 'loading' });
     try {
-      await unlockAudio(true);
-      this.stream = await requestCamera(true);
+      await unlockAudio(gameConfig.net.callAudio);
+      this.stream = await requestCamera(gameConfig.net.callAudio);
       this.localVideo.srcObject = this.stream;
       await this.localVideo.play().catch(() => undefined);
       useRoomStore.getState().set({ screen: 'lobby' });
@@ -112,6 +113,7 @@ export class RoomSession {
       send: (m) => this.signaling?.send(m),
       events: {
         onRemoteStream: (s) => {
+          this.remoteVideo.muted = !gameConfig.net.callAudio;
           this.remoteVideo.srcObject = s;
           void this.remoteVideo.play().catch(() => undefined);
           useRoomStore.getState().set({ remoteVideo: true });

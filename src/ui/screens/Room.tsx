@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { gameConfig } from '../../game/gameConfig';
 import { RoomSession } from '../../game/room';
 import { useRoomStore } from '../../game/roomStore';
 import { permissionHelp } from '../../vision/camera';
@@ -90,7 +91,7 @@ export function Room() {
           <p className={solo.small}>
             Ta vidéo passe directement d’un téléphone à l’autre. L’analyse du visage reste sur ton appareil : rien n’est enregistré.
           </p>
-          <button onClick={() => session?.activate(consent)}>Activer caméra et micro</button>
+          <button onClick={() => session?.activate(consent)}>{gameConfig.net.callAudio ? 'Activer caméra et micro' : 'Activer la caméra'}</button>
         </section>
       )}
 
@@ -98,7 +99,7 @@ export function Room() {
 
       {s.screen === 'denied' && (
         <section className={solo.panel}>
-          <h1>Caméra ou micro refusé</h1>
+          <h1>Caméra refusée</h1>
           <p>{permissionHelp()}</p>
           <button onClick={() => session?.activate(consent)}>Réessayer</button>
         </section>
