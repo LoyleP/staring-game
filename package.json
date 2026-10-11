@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "postinstall": "node scripts/copy-mediapipe.mjs"
+    "postinstall": "node scripts/copy-mediapipe.mjs",
+    "dev:phone": "DEV_PHONE=1 vite"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.1.0",
@@ -30,6 +31,7 @@
     "@types/react-dom": "19.3.0",
     "@types/ws": "8.18.2",
     "@vercel/node": "23.0.1",
+    "@vitejs/plugin-basic-ssl": "2.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.3",
     "eslint": "10.12.0",
