@@ -150,3 +150,29 @@ describe('SoloRound avec adversaire', () => {
     expect(r.step(6000, laugh, laugh).winner).toBe('draw');
   });
 });
+
+describe('SoloRound en mode réseau', () => {
+  const quiet = { events: [], flags: calm };
+
+  it('part des auras fournies (mort subite) et expose les pénalités appliquées', () => {
+    const r = new SoloRound(0, true, gameConfig, { me: 700, opp: 650 });
+    const snap = r.step(100, { events: [{ type: 'smileLight', t: 100 }], flags: calm });
+    expect(snap.aura).toBe(700);
+    expect(snap.oppAura).toBe(650);
+    const play = new SoloRound(0, true, gameConfig, { me: 700, opp: 650 });
+    play.step(6000, quiet);
+    const hit = play.step(6100, { events: [{ type: 'smileLight', t: 6100 }], flags: calm });
+    expect(hit.applied).toEqual([{ type: 'smileLight', delta: -150 }]);
+    expect(hit.aura).toBe(550);
+  });
+
+  it('applique les pénalités annoncées de l’adversaire puis recale sur sa valeur', () => {
+    const r = new SoloRound(0, true);
+    r.addOppDelta(-400);
+    expect(r.step(6000, quiet).oppAura).toBe(600);
+    r.setOppAura(580);
+    expect(r.step(6100, quiet).oppAura).toBe(580);
+    r.addOppDelta(-9999);
+    expect(r.step(6200, quiet).oppAura).toBe(0);
+  });
+});

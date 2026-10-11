@@ -5,6 +5,9 @@ import { PeerSession } from '../net/peer';
 import { PROTOCOL_VERSION, type GameMessage, type SignalMessage } from '../net/protocol';
 import { Signaling } from '../net/signaling';
 import { CameraError, requestCamera, stopStream } from '../vision/camera';
+import { VisionPipeline } from '../vision/pipeline';
+import { Duel } from './duel';
+import { clockOffsetSample, medianOffset } from './matchLogic';
 import { useRoomStore } from './roomStore';
 
 const PING_MS = 2000;
@@ -21,6 +24,11 @@ export class RoomSession {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private pingId = 0;
   private disposed = false;
+  private pipeline: VisionPipeline | null = null;
+  private duel: Duel | null = null;
+  /** Décalage d'horloge hôte − local (0 pour l'hôte). */
+  private offset = 0;
+  private offsetSamples: number[] = [];
 
   constructor(
     private readonly code: string,
@@ -61,9 +69,30 @@ export class RoomSession {
       this.stream = await requestCamera(gameConfig.net.callAudio);
       this.localVideo.srcObject = this.stream;
       await this.localVideo.play().catch(() => undefined);
-      useRoomStore.getState().set({ screen: 'lobby' });
-      await this.ensurePeer();
+      const role = useRoomStore.getState().role ?? 'guest';
+      this.duel = new Duel({
+        side: role,
+        send: (m) => this.peer?.sendGame(m) ?? false,
+        sendCritical: (m) => this.sendCritical(m),
+        toLocal: (t) => t - this.offset,
+        toHost: (t) => t + this.offset,
+        now: () => performance.now(),
+      });
+      this.duel.startWatchdog(() => {
+        const st = useRoomStore.getState();
+        return st.peerPresent && st.connection === 'connected';
+      });
+      useRoomStore.getState().set({ screen: 'calibrating', calibProgress: 0, calibMessage: null });
+      void this.ensurePeer();
+      this.pipeline = new VisionPipeline(this.localVideo);
+      await this.pipeline.start();
+      this.pipeline.calibrate({
+        progress: (p, m) => useRoomStore.getState().set({ calibProgress: p, calibMessage: m }),
+        done: () => useRoomStore.getState().set({ screen: 'lobby' }),
+      });
     } catch (e) {
+      this.pipeline?.stop();
+      this.pipeline = null;
       stopStream(this.stream);
       this.stream = null;
       useRoomStore.getState().set(
@@ -90,6 +119,8 @@ export class RoomSession {
   dispose(): void {
     this.disposed = true;
     this.signaling?.stop();
+    this.duel?.dispose();
+    this.pipeline?.stop();
     this.closePeer();
     stopStream(this.stream);
     this.stream = null;
@@ -153,7 +184,10 @@ export class RoomSession {
     } else if (m.type === 'peer-left') {
       this.buffered = [];
       this.closePeer();
-      store.set({ peerPresent: false, meReady: false, screen: store.screen === 'call' ? 'lobby' : store.screen });
+      // En partie, le chronomètre de forfait du duel prend le relais ; sinon on reste dans le salon.
+      store.set({ peerPresent: false, meReady: false });
+    } else if (m.type === 'relay') {
+      this.onGame(m.message);
     } else if (this.peer) {
       this.peer.handle(m);
     } else {
@@ -166,10 +200,23 @@ export class RoomSession {
     if (!peer) return;
     peer.sendGame({ type: 'hello', version: PROTOCOL_VERSION, consentCapture: this.consent });
     if (useRoomStore.getState().meReady) peer.sendGame({ type: 'ready', ready: true });
+    // L'invité synchronise son horloge sur celle de l'hôte : 5 échanges rapprochés, puis la médiane.
+    if (useRoomStore.getState().role === 'guest') {
+      for (let i = 0; i < 5; i++) setTimeout(() => this.sendPing(), i * 150);
+    }
     if (this.pingTimer) clearInterval(this.pingTimer);
     this.pingTimer = setInterval(() => {
-      this.peer?.sendGame({ type: 'ping', id: ++this.pingId, t: performance.now() });
+      this.sendPing();
     }, PING_MS);
+  }
+
+  private sendPing(): void {
+    this.peer?.sendGame({ type: 'ping', id: ++this.pingId, t: performance.now() });
+  }
+
+  /** Message critique : DataChannel, sinon relais par la signalisation (WebSocket ou polling). */
+  private sendCritical(m: GameMessage): void {
+    if (!this.peer?.sendGame(m)) this.signaling?.send({ type: 'relay', message: m });
   }
 
   private onGame(m: GameMessage): void {
@@ -185,14 +232,30 @@ export class RoomSession {
       case 'ping':
         this.peer?.sendGame({ type: 'pong', id: m.id, t: m.t, tRemote: performance.now() });
         break;
-      case 'pong':
-        store.set({ rtt: Math.round(performance.now() - m.t) });
+      case 'pong': {
+        const received = performance.now();
+        store.set({ rtt: Math.round(received - m.t) });
+        if (store.role === 'guest') {
+          this.offsetSamples = [...this.offsetSamples.slice(-8), clockOffsetSample(m.t, m.tRemote, received)];
+          this.offset = medianOffset(this.offsetSamples);
+        }
         break;
+      }
+      default:
+        this.duel?.onMessage(m);
     }
   }
 
   private checkStart(): void {
     const s = useRoomStore.getState();
-    if (s.meReady && s.peerReady && s.screen === 'lobby') s.set({ screen: 'call' });
+    if (!(s.meReady && s.peerReady && s.screen === 'lobby')) return;
+    s.set({ screen: 'call' });
+    const duel = this.duel;
+    this.pipeline?.watch((out, frame) => duel?.onFrame(out, frame));
+    if (s.role === 'host') duel?.startMatch();
+  }
+
+  requestRematch(): void {
+    this.duel?.requestRematch();
   }
 }

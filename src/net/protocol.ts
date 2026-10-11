@@ -30,10 +30,41 @@ export interface IceServerConfig {
 /** Messages du DataChannel `game`. */
 export const PROTOCOL_VERSION = 1;
 
+export type MatchSide = 'host' | 'guest';
+export type RoundEndReason = 'crack' | 'zero' | 'time' | 'forfeit';
+
+export interface MatchResult {
+  winner: MatchSide | 'draw';
+  reason: RoundEndReason;
+  hostAura: number;
+  guestAura: number;
+}
+
 export type GameMessage =
   | { type: 'hello'; version: number; consentCapture: boolean }
+  /** `t` : horloge de l'émetteur. Le pong ajoute `tRemote` (horloge du répondeur) pour calculer le décalage. */
   | { type: 'ping'; id: number; t: number }
   | { type: 'pong'; id: number; t: number; tRemote: number }
-  | { type: 'ready'; ready: boolean };
+  | { type: 'ready'; ready: boolean }
+  /** Hôte → invité : début de la manche, `startAt` dans l'horloge de l'hôte. */
+  | { type: 'roundStart'; round: number; startAt: number }
+  /** Pénalité ponctuelle sur le visage de l'émetteur. */
+  | { type: 'penalty'; kind: string; amount: number; t: number }
+  /** Aura courante de l'émetteur, toutes les 500 ms : corrige la dérive. */
+  | { type: 'aura'; aura: number; t: number }
+  | { type: 'sound'; id: string; playAt: number }
+  /** Le joueur craque (rire) ou tombe à 0 : fin de manche immédiate. */
+  | { type: 'crack'; reason: 'crack' | 'zero'; t: number }
+  /** Hôte → invité : mort subite (égalité à moins de la marge), `endAt` dans l'horloge de l'hôte. */
+  | { type: 'suddenDeath'; endAt: number }
+  | { type: 'roundEnd'; round: number; result: MatchResult; wins: Record<MatchSide, number> }
+  | {
+      type: 'matchEnd';
+      winner: MatchSide;
+      forfeit: boolean;
+      wins: Record<MatchSide, number>;
+      rounds: MatchResult[];
+    }
+  | { type: 'rematch' };
 
 export const ROOM_CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;

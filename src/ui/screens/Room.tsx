@@ -1,11 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { gameConfig } from '../../game/gameConfig';
+import { useDuelStore, type RoundSummary } from '../../game/duelStore';
 import { RoomSession } from '../../game/room';
 import { useRoomStore } from '../../game/roomStore';
 import { permissionHelp } from '../../vision/camera';
+import { MatchHud } from '../components/MatchHud';
 import solo from './Solo.module.css';
 import styles from './Room.module.css';
+
+const reasonText = (r: RoundSummary) =>
+  r.reason === 'crack'
+    ? r.winner === 'me'
+      ? 'L’adversaire a craqué'
+      : 'Tu as craqué'
+    : r.reason === 'zero'
+      ? 'Aura épuisée'
+      : r.reason === 'forfeit'
+        ? 'Forfait'
+        : 'Au temps';
+
+const roundTitle = (r: RoundSummary) => (r.winner === 'me' ? 'Manche gagnée' : r.winner === 'opp' ? 'Manche perdue' : 'Manche nulle');
 
 const statusText = (peerPresent: boolean, connection: string, remoteVideo: boolean) => {
   if (!peerPresent) return 'En attente de l’adversaire…';
@@ -26,6 +41,7 @@ export function Room() {
   const [consent, setConsent] = useState(false);
   const [copied, setCopied] = useState(false);
   const s = useRoomStore();
+  const d = useDuelStore();
 
   useEffect(() => {
     if (!localRef.current || !remoteRef.current) return;
@@ -51,7 +67,7 @@ export function Room() {
   };
 
   const inCall = s.screen === 'call';
-  const live = s.screen === 'lobby' || inCall;
+  const live = s.screen === 'calibrating' || s.screen === 'lobby' || inCall;
 
   return (
     <main className={solo.root}>
@@ -105,6 +121,17 @@ export function Room() {
         </section>
       )}
 
+      {s.screen === 'calibrating' && (
+        <>
+          <div className={solo.oval} />
+          <section className={solo.bottom}>
+            <p>Remplis l’ovale, visage neutre, ne bouge pas</p>
+            {s.calibMessage && <p className={solo.warn}>{s.calibMessage}</p>}
+            <progress value={s.calibProgress} max={1} />
+          </section>
+        </>
+      )}
+
       {s.screen === 'lobby' && (
         <section className={solo.bottom}>
           <div className={styles.code}>{s.code}</div>
@@ -123,12 +150,65 @@ export function Room() {
 
       {inCall && (
         <>
-          <header className={solo.top}>
-            <span className={solo.pill}>
-              {statusText(s.peerPresent, s.connection, s.remoteVideo)}
-              {debug ? ` · ${s.rtt ?? '–'} ms · ${s.signalingTransport ?? '–'}` : ''}
-            </span>
-          </header>
+          {d.snap && d.phase === 'round' ? (
+            <MatchHud
+              snap={d.snap}
+              floaters={d.floaters}
+              oppLabel="Adversaire"
+              title={`Manche ${d.round} · ${d.wins.me}-${d.wins.opp}`}
+              suddenDeath={d.suddenDeath}
+            />
+          ) : (
+            <header className={solo.top}>
+              <span className={solo.pill}>
+                {d.phase === 'idle' ? 'En attente du début…' : statusText(s.peerPresent, s.connection, s.remoteVideo)}
+                {debug ? ` · ${s.rtt ?? '–'} ms · ${s.signalingTransport ?? '–'}` : ''}
+              </span>
+            </header>
+          )}
+
+          {debug && d.phase === 'round' && (
+            <span className={styles.debug}>{s.rtt ?? '–'} ms · {s.signalingTransport ?? '–'}</span>
+          )}
+
+          {d.forfeitIn !== null && d.phase !== 'ended' && (
+            <div className={styles.banner}>Adversaire déconnecté · victoire par forfait dans {d.forfeitIn} s</div>
+          )}
+
+          {d.phase === 'between' && d.lastRound && (
+            <section className={solo.result}>
+              <h1>{roundTitle(d.lastRound)}</h1>
+              <p className={solo.small}>{reasonText(d.lastRound)}</p>
+              <p className={solo.score}>
+                {d.lastRound.meAura} <span>vs</span> {d.lastRound.oppAura}
+              </p>
+              <p className={solo.small}>Score : {d.wins.me} - {d.wins.opp} · manche suivante…</p>
+            </section>
+          )}
+
+          {d.phase === 'ended' && (
+            <section className={solo.result}>
+              <h1>{d.matchWinner === 'me' ? 'Tu gagnes la partie' : 'Tu perds la partie'}</h1>
+              <p className={solo.small}>{d.forfeit ? 'Forfait de l’adversaire' : `Manches : ${d.wins.me} - ${d.wins.opp}`}</p>
+              <p className={solo.score}>
+                {d.summaries.reduce((t, r) => t + r.meAura, 0)} <span>vs</span> {d.summaries.reduce((t, r) => t + r.oppAura, 0)}
+              </p>
+              <p className={solo.small}>Aura cumulée</p>
+              <button disabled={d.rematchMe} onClick={() => session?.requestRematch()}>
+                {d.rematchMe ? (d.rematchOpp ? 'Revanche…' : 'En attente de l’adversaire…') : d.rematchOpp ? 'Revanche (il veut rejouer)' : 'Revanche'}
+              </button>
+              <button
+                className={solo.secondary}
+                onClick={() => {
+                  session?.leave();
+                  navigate('/');
+                }}
+              >
+                Quitter
+              </button>
+            </section>
+          )}
+
           <footer className={solo.controls}>
             <button
               className={solo.end}

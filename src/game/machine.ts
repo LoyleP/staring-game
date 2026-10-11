@@ -1,4 +1,4 @@
-import type { DetectorOutput, FaceFlags } from '../vision/types';
+import type { DetectorOutput, FaceEventType, FaceFlags } from '../vision/types';
 import { gameConfig } from './gameConfig';
 import {
   applyEvent,
@@ -30,6 +30,8 @@ export interface RoundSnapshot {
   flags: FaceFlags;
   /** Variations ponctuelles survenues sur cette image. */
   deltas: number[];
+  /** Mêmes variations avec leur type, pour les envoyer à l'adversaire. */
+  applied: { type: FaceEventType; delta: number }[];
   oppDeltas: number[];
 }
 
@@ -47,9 +49,10 @@ export class SoloRound {
     private readonly startT: number,
     withOpponent = false,
     private readonly cfg: Config = gameConfig,
+    initial?: { me: number; opp: number },
   ) {
-    this.me = createRoundState(cfg);
-    this.opp = withOpponent ? createRoundState(cfg) : null;
+    this.me = { ...createRoundState(cfg), ...(initial && { aura: initial.me }) };
+    this.opp = withOpponent ? { ...createRoundState(cfg), ...(initial && { aura: initial.opp }) } : null;
     this.lastT = startT;
     this.last = this.snapshot(startT, [], [], IDLE_FLAGS);
   }
@@ -59,11 +62,15 @@ export class SoloRound {
     const phase = roundPhase(t - this.startT, this.cfg);
     const deltas: number[] = [];
     const oppDeltas: number[] = [];
+    const applied: RoundSnapshot['applied'] = [];
 
     for (const event of out.events) {
       const r = applyEvent(this.me, event, phase, this.cfg);
       this.me = r.state;
-      if (r.delta !== 0) deltas.push(r.delta);
+      if (r.delta !== 0) {
+        deltas.push(r.delta);
+        applied.push({ type: event.type, delta: r.delta });
+      }
     }
     if (this.opp && oppOut) {
       for (const event of oppOut.events) {
@@ -78,9 +85,21 @@ export class SoloRound {
     this.me = tick(this.me, dt, phase, out.flags, this.cfg);
     if (this.opp && oppOut) this.opp = tick(this.opp, dt, phase, oppOut.flags, this.cfg);
 
-    this.last = this.snapshot(t, deltas, oppDeltas, out.flags);
+    this.last = this.snapshot(t, deltas, oppDeltas, out.flags, applied);
     if (this.last.ended) this.done = true;
     return this.last;
+  }
+
+  /**
+   * Mode réseau : l'adversaire est arbitré sur son téléphone. On applique ses pénalités annoncées,
+   * puis `setOppAura` corrige la dérive avec sa valeur réelle. La fin de sa manche vient de son message `crack`.
+   */
+  addOppDelta(delta: number): void {
+    if (this.opp) this.opp = { ...this.opp, aura: Math.max(0, this.opp.aura + delta) };
+  }
+
+  setOppAura(aura: number): void {
+    if (this.opp) this.opp = { ...this.opp, aura: Math.max(0, aura) };
   }
 
   /** Applique le coût d'un son lancé (négatif) ; renvoie la variation réellement appliquée. */
@@ -110,21 +129,29 @@ export class SoloRound {
     return null;
   }
 
-  private snapshot(t: number, deltas: number[], oppDeltas: number[], flags: FaceFlags): RoundSnapshot {
+  private snapshot(
+    t: number,
+    deltas: number[],
+    oppDeltas: number[],
+    flags: FaceFlags,
+    applied: RoundSnapshot['applied'] = [],
+  ): RoundSnapshot {
     const { countdownMs, durationMs } = this.cfg.round;
     const elapsedMs = t - this.startT;
     const ended = this.me.ended ?? this.opp?.ended ?? null;
     return {
       phase: ended ? 'ended' : roundPhase(elapsedMs, this.cfg),
       elapsedMs,
-      countdown: Math.max(0, Math.ceil((countdownMs - elapsedMs) / 1000)),
-      timeLeftMs: Math.max(0, countdownMs + durationMs - elapsedMs),
+      countdown: Math.min(Math.ceil(countdownMs / 1000), Math.max(0, Math.ceil((countdownMs - elapsedMs) / 1000))),
+      // Le minuteur reste à la durée complète pendant le compte à rebours.
+      timeLeftMs: Math.min(durationMs, Math.max(0, countdownMs + durationMs - elapsedMs)),
       aura: this.me.aura,
       oppAura: this.opp?.aura ?? null,
       ended,
       winner: this.winner(),
       flags,
       deltas,
+      applied,
       oppDeltas,
     };
   }

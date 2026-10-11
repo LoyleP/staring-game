@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { gameConfig } from '../../game/gameConfig';
 import { SoloSession } from '../../game/solo';
 import { useSoloStore } from '../../game/store';
 import { permissionHelp } from '../../vision/camera';
 import { SoundButton } from '../components/SoundButton';
-import { AuraGauge } from '../components/AuraGauge';
+import { MatchHud } from '../components/MatchHud';
 import { DebugOverlay } from '../components/DebugOverlay';
 import { OpponentView } from '../components/OpponentView';
 import styles from './Solo.module.css';
-
-const clock = (ms: number) => {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-};
 
 export function Solo() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -32,7 +26,6 @@ export function Solo() {
 
   const inCall = screen === 'running' || screen === 'ended';
   const live = inCall || screen === 'calibrating' || screen === 'ready';
-  const startAura = gameConfig.round.startAura;
   const cracked = snap?.winner === 'me' && snap.ended === 'crack';
 
   return (
@@ -97,31 +90,7 @@ export function Solo() {
         </section>
       )}
 
-      {screen === 'running' && snap && (
-        <>
-          <header className={styles.top}>
-            <span className={styles.pill}>Bot · {clock(snap.timeLeftMs)}</span>
-          </header>
-
-          <div className={styles.mid}>
-            <AuraGauge side="opp" label="Bot" aura={snap.oppAura ?? 0} max={startAura} />
-            <AuraGauge side="me" label="Toi" aura={snap.aura} max={startAura} />
-            {floaters.map((f) => (
-              <div key={f.id} className={styles.floater} data-side={f.side}>
-                {f.delta}
-              </div>
-            ))}
-          </div>
-
-          {snap.phase === 'countdown' && <div className={styles.big}>{snap.countdown}</div>}
-          {snap.phase === 'grace' && <div className={styles.hint}>Prêt…</div>}
-          <div className={styles.alerts}>
-            {snap.phase === 'play' && snap.flags.faceLost && <span className={styles.alert}>Visage perdu !</span>}
-            {snap.phase === 'play' && snap.flags.smiling && <span className={styles.alert}>Tu souris</span>}
-            {snap.phase === 'play' && snap.flags.headMoving && <span className={styles.alert}>Ne bouge pas</span>}
-          </div>
-        </>
-      )}
+      {screen === 'running' && snap && <MatchHud snap={snap} floaters={floaters} oppLabel="Bot" />}
 
       {inCall && (
         <footer className={styles.controls}>
