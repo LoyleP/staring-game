@@ -1,4 +1,5 @@
 import { canFire, createBoard, fire, reloadProgress, type BoardState } from '../audio/board';
+import { RandomSoundScheduler } from '../audio/randomSounds';
 import { SOUNDS } from '../audio/sounds';
 import { resumeAudio } from '../audio/unlock';
 import type { DetectorOutput, FaceFrame } from '../vision/types';
@@ -56,6 +57,7 @@ export class Duel {
   private matchOver = false;
   private rematch = { me: false, opp: false };
   private board: BoardState | null = null;
+  private randomSounds = new RandomSoundScheduler();
 
   private readonly view: DuelStoreHook;
 
@@ -184,6 +186,7 @@ export class Duel {
     this.lastAuraSent = 0;
     this.lastOppAura = this.d.now();
     this.board = createBoard(SOUNDS.map((x) => x.id));
+    this.randomSounds.reset();
     this.view.getState().set({ phase: 'round', round, snap: null, floaters: [], suddenDeath: false, hand: this.hand(), reload: 1 });
   }
 
@@ -196,6 +199,7 @@ export class Duel {
       opp: prev?.oppAura ?? gameConfig.round.startAura,
     });
     this.suddenDeath = true;
+    this.randomSounds.reset();
     this.selfEnded = false;
     this.timeEndHandled = false;
     this.lastOppAura = this.d.now();
@@ -238,6 +242,16 @@ export class Duel {
     const round = this.round;
     if (!round || this.decided) return;
     const snap = round.step(frame.t, out);
+
+    // L'hôte déclenche les sons aléatoires du jeu pour les deux téléphones, au même instant.
+    if (this.d.side === 'host' && snap.phase === 'play' && this.randomSounds.due(frame.t)) {
+      const id = this.randomSounds.pick(SOUNDS.map((x) => x.id));
+      if (id) {
+        const playAt = this.d.toHost(frame.t) + gameConfig.soundboard.playDelayMs;
+        this.d.sendCritical({ type: 'sound', id, playAt });
+        this.d.play?.(id, gameConfig.soundboard.playDelayMs);
+      }
+    }
 
     for (const a of snap.applied) {
       this.d.send({ type: 'penalty', kind: a.type, amount: a.delta, t: frame.t });

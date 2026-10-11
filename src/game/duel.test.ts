@@ -246,6 +246,23 @@ describe('Duel : deux joueurs simulés', () => {
       expect(p.guestStore.getState().snap?.aura).toBe(1000);
     });
 
+    it('le jeu lance des sons aléatoires, joués sur les deux téléphones au même instant, sans coût ni munition', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0); // délais minimaux : premier son 5 s après le début du jeu
+      const p = new Pair();
+      p.host.startMatch();
+      p.run(6000); // compte à rebours + grâce (jeu dès 6,5 s)
+      expect(p.plays).toHaveLength(0);
+      p.run(7000);
+      expect(p.plays.length).toBeGreaterThanOrEqual(2);
+      const [a, b] = p.plays;
+      expect(a?.id).toBe(b?.id);
+      expect(new Set([a?.side, b?.side])).toEqual(new Set(['host', 'guest']));
+      expect(Math.abs((a?.hostTime ?? 0) - (b?.hostTime ?? 99999))).toBeLessThan(5);
+      expect(p.hostStore.getState().snap?.aura).toBe(1000);
+      expect(p.hostStore.getState().hand.every((c) => !c.used)).toBe(true);
+      vi.restoreAllMocks();
+    });
+
     it('remet une main neuve à chaque manche', () => {
       const p = new Pair();
       p.host.startMatch();

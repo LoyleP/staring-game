@@ -32,6 +32,8 @@ export const gameConfig = {
     inferenceFpsMainThread: 10,
   },
   soundboard: { ammoPerRound: 3, reloadMs: 8_000, auraCost: -50, playDelayMs: 150 },
+  /** Sons déclenchés par le jeu lui-même, à intervalle aléatoire pendant la phase de jeu (sans munition ni coût). */
+  randomSounds: { enabled: true, firstMinMs: 5_000, firstMaxMs: 12_000, minGapMs: 7_000, maxGapMs: 18_000 },
   net: {
     maxPlayers: 2,
     wsFailuresBeforePolling: 2,

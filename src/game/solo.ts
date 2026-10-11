@@ -1,4 +1,5 @@
 import { canFire, createBoard, fire, reloadProgress, type BoardState } from '../audio/board';
+import { RandomSoundScheduler } from '../audio/randomSounds';
 import { loadSounds, playSound } from '../audio/soundboard';
 import { SOUNDS } from '../audio/sounds';
 import { closeAudio, unlockAudio } from '../audio/unlock';
@@ -27,6 +28,7 @@ export class SoloSession {
   private roundStart = 0;
   private bot: FakeOpponent | null = null;
   private board: BoardState | null = null;
+  private randomSounds = new RandomSoundScheduler();
   private floaterId = 0;
   private recent: string[] = [];
   private mode: 'idle' | 'calibrating' | 'running' = 'idle';
@@ -72,6 +74,7 @@ export class SoloSession {
     this.round = null; // l'horloge démarre à la première image analysée
     this.bot = new FakeOpponent();
     this.board = createBoard(SOUNDS.map((x) => x.id));
+    this.randomSounds.reset();
     this.mode = 'running';
     useSoloStore.getState().set({ screen: 'running', snap: null, floaters: [], hand: this.hand(), reload: 1 });
   }
@@ -165,6 +168,10 @@ export class SoloSession {
       if (cost !== 0) useSoloStore.getState().set({ floaters: [...useSoloStore.getState().floaters, { id: performance.now() + 0.5, side: 'opp', delta: cost }] });
     }
     const snap = this.round.step(frame.t, out, bot?.out);
+    if (snap.phase === 'play' && this.randomSounds.due(frame.t)) {
+      const id = this.randomSounds.pick(SOUNDS.map((x) => x.id));
+      if (id) playSound(id);
+    }
     const store = useSoloStore.getState();
 
     for (const e of out.events) this.recent = [`${(snap.elapsedMs / 1000).toFixed(1)}s ${e.type}`, ...this.recent].slice(0, 6);
