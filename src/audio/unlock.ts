@@ -25,6 +25,17 @@ export async function unlockAudio(withMic = false): Promise<AudioContext> {
   return ctx;
 }
 
+/** iOS suspend ou "interrompt" le contexte (permission caméra, appel, verrouillage) : à rappeler dans un tap. */
+export async function resumeAudio(): Promise<void> {
+  if (ctx && ctx.state !== 'running') {
+    try {
+      await ctx.resume();
+    } catch {
+      // refusé hors geste utilisateur : sera retenté au prochain tap
+    }
+  }
+}
+
 export function audioContext(): AudioContext | null {
   return ctx;
 }

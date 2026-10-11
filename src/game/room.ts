@@ -1,5 +1,5 @@
 import { loadSounds, playSound } from '../audio/soundboard';
-import { closeAudio, unlockAudio } from '../audio/unlock';
+import { closeAudio, resumeAudio, unlockAudio } from '../audio/unlock';
 import { gameConfig } from './gameConfig';
 import { ApiError, clearSession, enterRoom, fetchIceServers, leaveRoom, savedSession } from '../net/api';
 import { PeerSession } from '../net/peer';
@@ -107,6 +107,7 @@ export class RoomSession {
   }
 
   setReady(ready: boolean): void {
+    void resumeAudio(); // tap : reprend le son suspendu par la permission caméra
     useRoomStore.getState().set({ meReady: ready });
     this.peer?.sendGame({ type: 'ready', ready });
     this.checkStart();

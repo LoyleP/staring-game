@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { gameConfig } from '../../game/gameConfig';
 import { useDuelStore, type RoundSummary } from '../../game/duelStore';
+import { audioStatus } from '../../audio/soundboard';
 import { RoomSession } from '../../game/room';
 import { useRoomStore } from '../../game/roomStore';
 import { permissionHelp } from '../../vision/camera';
@@ -169,7 +170,12 @@ export function Room() {
           )}
 
           {debug && d.phase === 'round' && (
-            <span className={styles.debug}>{s.rtt ?? '–'} ms · {s.signalingTransport ?? '–'}</span>
+            <span className={styles.debug}>
+              {s.rtt ?? '–'} ms · {s.signalingTransport ?? '–'} · audio {(() => {
+                const a = audioStatus();
+                return `${a.state} ${a.loaded}/${a.total}${a.error ? ` ✗ ${a.error}` : ''}`;
+              })()}
+            </span>
           )}
 
           {d.forfeitIn !== null && d.phase !== 'ended' && (

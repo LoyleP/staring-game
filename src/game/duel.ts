@@ -1,5 +1,6 @@
 import { canFire, createBoard, fire, reloadProgress, type BoardState } from '../audio/board';
 import { SOUNDS } from '../audio/sounds';
+import { resumeAudio } from '../audio/unlock';
 import type { DetectorOutput, FaceFrame } from '../vision/types';
 import type { GameMessage, MatchResult, MatchSide, RoundEndReason } from '../net/protocol';
 import { addWin, decideAtTime, decideCrack, decideSuddenDeath, matchWinner, other, type Wins } from './matchLogic';
@@ -209,6 +210,7 @@ export class Duel {
     if (!round || !board || this.decided || this.selfEnded || snap?.phase !== 'play') return;
     const now = this.d.now();
     if (canFire(board, index, now) !== 'ok') return;
+    void resumeAudio(); // dans le geste du tap : iOS n'autorise la reprise qu'ici
     const id = board.hand[index] as string;
     this.board = fire(board, index, now);
     const playAt = this.d.toHost(now) + gameConfig.soundboard.playDelayMs;
